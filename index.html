@@ -1,0 +1,1537 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>JanSeva | Public Grievance Registration and Resolution System</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            gov: {
+              navy: {
+                950: '#090d16',
+                900: '#0f172a',
+                800: '#1e293b',
+                700: '#334155',
+                600: '#475569'
+              },
+              gold: {
+                700: '#92400e',
+                600: '#b45309',
+                500: '#d97706',
+                400: '#f59e0b',
+                100: '#fef3c7'
+              }
+            }
+          }
+        }
+      }
+    };
+  </script>
+
+  <!-- Google Fonts: Inter & Cinzel for Civic Seal -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Canvas Confetti -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+  <!-- Supabase JS v2 CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <!-- Custom Stylesheet -->
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased flex flex-col min-h-screen">
+
+  <!-- ==============================================================================
+       1. TOP CIVIC ACCESSIBILITY & STATUS BAR
+       ============================================================================== -->
+  <div class="gov-ribbon"></div>
+  <header class="bg-slate-900 text-slate-300 text-xs border-b border-slate-800 py-1.5 px-4 sm:px-8">
+    <div class="max-w-7xl mx-auto flex flex-wrap justify-between items-center gap-2">
+      <div class="flex items-center space-x-3">
+        <span class="inline-flex items-center font-medium text-slate-200">
+          <svg class="w-3.5 h-3.5 mr-1.5 text-amber-500" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+          </svg>
+          Government of India / Civic Administration Services
+        </span>
+        <span class="hidden md:inline text-slate-600">|</span>
+        <span class="hidden md:inline text-slate-400">Department of Administrative Reforms & Public Grievances</span>
+      </div>
+
+      <div class="flex items-center space-x-4">
+        <!-- Supabase Cloud Sync Status Badge -->
+        <div id="supabase-status-indicator">
+          <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] bg-slate-800 text-slate-400">
+            Checking Supabase...
+          </span>
+        </div>
+        
+        <!-- Quick Help / SQL Setup link -->
+        <button onclick="openSqlModal()" class="text-amber-400 hover:text-amber-300 underline font-medium text-[11px] flex items-center">
+          <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+          Supabase SQL Setup
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ==============================================================================
+       2. PRIMARY GOVERNMENT NAVBAR
+       ============================================================================== -->
+  <nav class="bg-gov-navy-800 text-white shadow-lg sticky top-0 z-40 border-b border-slate-700">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex justify-between items-center h-20">
+        
+        <!-- Portal Brand & Civic Seal -->
+        <div class="flex items-center space-x-3 cursor-pointer" onclick="navigate('home')">
+          <div class="w-12 h-12 rounded-lg bg-gradient-to-br from-amber-500 to-amber-700 p-0.5 shadow-md flex items-center justify-center">
+            <div class="w-full h-full bg-gov-navy-900 rounded-[7px] flex items-center justify-center">
+              <svg class="w-7 h-7 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+              </svg>
+            </div>
+          </div>
+          <div>
+            <div class="flex items-center space-x-2">
+              <span class="text-xl font-extrabold tracking-tight text-white font-emblem">JANSEVA</span>
+              <span class="px-2 py-0.5 text-[10px] font-bold uppercase rounded bg-amber-500/20 text-amber-400 border border-amber-500/30">PGRRS</span>
+            </div>
+            <p class="text-xs text-slate-300 font-medium tracking-wide">Public Grievance Registration & Resolution System</p>
+          </div>
+        </div>
+
+        <!-- Center Nav Items -->
+        <div class="hidden lg:flex items-center space-x-6 text-sm font-medium">
+          <a href="#" data-nav-target="home" class="text-amber-400 hover:text-amber-300 transition flex items-center">
+            Home
+          </a>
+          <a href="#" data-nav-target="public-track" class="text-slate-300 hover:text-amber-400 transition flex items-center">
+            <svg class="w-4 h-4 mr-1 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+            Track Status
+          </a>
+          <a href="#" data-nav-target="analytics" class="text-slate-300 hover:text-amber-400 transition flex items-center">
+            <svg class="w-4 h-4 mr-1 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+            Public Analytics
+          </a>
+          
+          <!-- Citizen-Only Nav Links -->
+          <a href="#" data-nav-target="file-grievance" class="nav-link-citizen hidden text-slate-300 hover:text-amber-400 transition">
+            Lodge Grievance
+          </a>
+          <a href="#" data-nav-target="my-grievances" class="nav-link-citizen hidden text-slate-300 hover:text-amber-400 transition">
+            My Grievances
+          </a>
+
+          <!-- Official/Admin-Only Nav Links -->
+          <a href="#" data-nav-target="dashboard" class="nav-link-official hidden text-slate-300 hover:text-amber-400 transition flex items-center">
+            <span class="w-2 h-2 rounded-full bg-amber-400 mr-1.5 animate-pulse"></span>
+            Redressal Desk
+          </a>
+        </div>
+
+        <!-- Right Side: Auth / Profile Area -->
+        <div class="hidden md:flex items-center space-x-3">
+          
+          <!-- Logged Out Actions -->
+          <div id="nav-logged-out" class="flex items-center space-x-2">
+            <!-- Quick Demo Dropdown Shortcut -->
+            <div class="relative group">
+              <button class="px-3 py-1.5 text-xs font-semibold rounded bg-slate-700 hover:bg-slate-600 text-amber-300 border border-slate-600 flex items-center transition">
+                ⚡ Quick Demo
+                <svg class="w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+              </button>
+              <div class="absolute right-0 mt-1 w-48 bg-slate-900 border border-slate-700 rounded-lg shadow-xl py-1 hidden group-hover:block z-50">
+                <button onclick="quickDemoLogin('citizen')" class="w-full text-left px-3 py-2 text-xs text-slate-200 hover:bg-slate-800 flex items-center">
+                  <span class="w-2 h-2 rounded-full bg-emerald-400 mr-2"></span> Citizen (Likith)
+                </button>
+                <button onclick="quickDemoLogin('official')" class="w-full text-left px-3 py-2 text-xs text-slate-200 hover:bg-slate-800 flex items-center">
+                  <span class="w-2 h-2 rounded-full bg-sky-400 mr-2"></span> Official (Water Dept)
+                </button>
+                <button onclick="quickDemoLogin('admin')" class="w-full text-left px-3 py-2 text-xs text-slate-200 hover:bg-slate-800 flex items-center">
+                  <span class="w-2 h-2 rounded-full bg-amber-400 mr-2"></span> Admin (Command Center)
+                </button>
+              </div>
+            </div>
+
+            <button onclick="openAuthModal('signin')" class="px-4 py-2 text-xs font-semibold text-slate-200 hover:text-white transition">
+              Sign In
+            </button>
+            <button onclick="openAuthModal('signup')" class="px-4 py-2 text-xs font-bold rounded-lg bg-amber-600 hover:bg-amber-500 text-white shadow-md transition">
+              Register Citizen
+            </button>
+          </div>
+
+          <!-- Logged In Actions -->
+          <div id="nav-logged-in" class="hidden flex items-center space-x-3">
+            <div id="nav-role-badge"></div>
+            <div class="text-right">
+              <div id="nav-user-name" class="text-xs font-bold text-white">Likith Sai</div>
+              <div class="text-[10px] text-slate-400">Authenticated Profile</div>
+            </div>
+            <button onclick="handleSignOut()" class="p-2 text-slate-400 hover:text-rose-400 rounded-lg hover:bg-slate-700/50 transition" title="Sign Out">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+            </button>
+          </div>
+
+        </div>
+
+        <!-- Mobile Hamburger Button -->
+        <div class="flex lg:hidden">
+          <button id="mobile-menu-toggle" class="p-2 text-slate-300 hover:text-white">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+          </button>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Mobile Nav Menu Dropdown -->
+    <div id="mobile-menu" class="hidden lg:hidden bg-slate-900 border-t border-slate-700 px-4 pt-2 pb-4 space-y-2 text-sm">
+      <a href="#" data-nav-target="home" class="block py-2 text-amber-400">Home</a>
+      <a href="#" data-nav-target="public-track" class="block py-2 text-slate-300">Track Grievance Status</a>
+      <a href="#" data-nav-target="analytics" class="block py-2 text-slate-300">Civic Analytics</a>
+      <a href="#" data-nav-target="file-grievance" class="nav-link-citizen hidden block py-2 text-slate-300">Lodge Grievance</a>
+      <a href="#" data-nav-target="my-grievances" class="nav-link-citizen hidden block py-2 text-slate-300">My Grievances</a>
+      <a href="#" data-nav-target="dashboard" class="nav-link-official hidden block py-2 text-amber-400">Official Redressal Desk</a>
+      <div class="pt-2 border-t border-slate-800 flex flex-col gap-2">
+        <button onclick="quickDemoLogin('citizen')" class="w-full py-2 text-xs font-semibold rounded bg-emerald-900/50 text-emerald-300 border border-emerald-700 text-left px-3">
+          ⚡ Demo: Citizen
+        </button>
+        <button onclick="quickDemoLogin('official')" class="w-full py-2 text-xs font-semibold rounded bg-sky-900/50 text-sky-300 border border-sky-700 text-left px-3">
+          ⚡ Demo: Official
+        </button>
+        <button onclick="quickDemoLogin('admin')" class="w-full py-2 text-xs font-semibold rounded bg-amber-900/50 text-amber-300 border border-amber-700 text-left px-3">
+          ⚡ Demo: Admin
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ==============================================================================
+       MAIN CONTAINER
+       ============================================================================== -->
+  <main class="flex-grow">
+
+    <!-- ============================================================================
+         VIEW 1: HOME & HERO
+         ============================================================================ -->
+    <section id="view-home" class="space-y-12 pb-16">
+      
+      <!-- Hero Section with Civic Background -->
+      <div class="relative bg-gradient-to-b from-gov-navy-900 via-gov-navy-800 to-slate-900 text-white pt-16 pb-24 px-4 sm:px-6 lg:px-8 border-b border-slate-700 overflow-hidden">
+        
+        <!-- Decorative subtle background accents -->
+        <div class="absolute inset-0 opacity-10 bg-[radial-gradient(#f59e0b_1px,transparent_1px)] [background-size:24px_24px]"></div>
+        
+        <div class="relative max-w-5xl mx-auto text-center space-y-6">
+          <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-semibold bg-amber-500/10 border border-amber-500/30 text-amber-300">
+            <span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+            National Public Grievance Redressal System • 24x7 Digital Window
+          </div>
+
+          <h1 class="text-3xl sm:text-5xl font-extrabold tracking-tight leading-tight">
+            Transparent, Time-Bound Resolution for <br class="hidden sm:inline"/>
+            <span class="text-transparent bg-clip-text bg-gradient-to-r from-amber-400 via-amber-200 to-amber-500">
+              Every Citizen Grievance
+            </span>
+          </h1>
+
+          <p class="text-sm sm:text-base text-slate-300 max-w-3xl mx-auto font-light leading-relaxed">
+            Lodge complaints regarding civic services, water supply, road repairs, electricity, and sanitation directly with responsible municipal departments. Track real-time progress through verified audit logs.
+          </p>
+
+          <!-- Instant Public Grievance Search Box -->
+          <div class="max-w-2xl mx-auto mt-8">
+            <div class="bg-slate-900/90 p-2 sm:p-2.5 rounded-2xl border-2 border-amber-500/50 shadow-2xl flex flex-col sm:flex-row items-center gap-2 gold-glow">
+              <div class="relative flex-1 w-full flex items-center pl-3">
+                <svg class="w-5 h-5 text-amber-400 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                <input 
+                  type="text" 
+                  id="hero-tracking-input" 
+                  placeholder="Enter Tracking ID (e.g. GRV-2026-1001)..." 
+                  class="w-full bg-transparent text-white text-sm focus:outline-none placeholder-slate-400 font-mono uppercase"
+                />
+              </div>
+              <button 
+                id="hero-track-btn" 
+                class="w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-bold text-xs uppercase tracking-wider rounded-xl shadow-lg transition duration-200 flex items-center justify-center"
+              >
+                Track Status
+              </button>
+            </div>
+
+            <!-- Quick Suggestion Pills -->
+            <div class="flex flex-wrap items-center justify-center gap-2 mt-3 text-xs text-slate-400">
+              <span>Try Demo Tracking IDs:</span>
+              <button onclick="tryDemoTracking('GRV-2026-1001')" class="px-2 py-0.5 rounded bg-slate-800 text-amber-300 border border-slate-700 hover:border-amber-400 transition font-mono">
+                GRV-2026-1001 (Water)
+              </button>
+              <button onclick="tryDemoTracking('GRV-2026-1002')" class="px-2 py-0.5 rounded bg-slate-800 text-emerald-300 border border-slate-700 hover:border-emerald-400 transition font-mono">
+                GRV-2026-1002 (Roads)
+              </button>
+              <button onclick="tryDemoTracking('GRV-2026-1003')" class="px-2 py-0.5 rounded bg-slate-800 text-sky-300 border border-slate-700 hover:border-sky-400 transition font-mono">
+                GRV-2026-1003 (Power)
+              </button>
+            </div>
+          </div>
+
+          <!-- Quick Action Buttons -->
+          <div class="pt-6 flex flex-wrap justify-center gap-4">
+            <button onclick="navigate('file-grievance')" class="px-6 py-3.5 bg-amber-600 hover:bg-amber-500 text-white text-sm font-bold rounded-xl shadow-lg hover:shadow-xl transition flex items-center">
+              <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+              Lodge New Grievance
+            </button>
+            <button onclick="navigate('analytics')" class="px-6 py-3.5 bg-slate-800/80 hover:bg-slate-700 text-slate-200 border border-slate-600 text-sm font-semibold rounded-xl transition flex items-center">
+              <svg class="w-4 h-4 mr-2 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+              Civic Performance Dashboard
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Quick Live Statistics Counter Ribbon -->
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-14 relative z-20">
+        <div class="bg-white rounded-2xl shadow-xl border border-slate-200/80 p-6 grid grid-cols-2 md:grid-cols-4 gap-6 divide-y md:divide-y-0 md:divide-x divide-slate-100">
+          
+          <div class="text-center pt-2 md:pt-0">
+            <div id="home-total-count" class="text-3xl font-extrabold text-slate-900">0</div>
+            <div class="text-xs font-semibold uppercase tracking-wider text-slate-500 mt-1">Total Grievances Lodged</div>
+          </div>
+
+          <div class="text-center pt-2 md:pt-0">
+            <div id="home-resolved-count" class="text-3xl font-extrabold text-emerald-600">0</div>
+            <div class="text-xs font-semibold uppercase tracking-wider text-slate-500 mt-1">Successfully Resolved</div>
+          </div>
+
+          <div class="text-center pt-2 md:pt-0">
+            <div id="home-inprogress-count" class="text-3xl font-extrabold text-sky-600">0</div>
+            <div class="text-xs font-semibold uppercase tracking-wider text-slate-500 mt-1">Under Active Redressal</div>
+          </div>
+
+          <div class="text-center pt-2 md:pt-0">
+            <div id="home-rate-count" class="text-3xl font-extrabold text-amber-600">0%</div>
+            <div class="text-xs font-semibold uppercase tracking-wider text-slate-500 mt-1">Civic Redressal Rate</div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- How It Works: 4-Step Civic Process -->
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
+        <div class="text-center max-w-2xl mx-auto mb-12">
+          <span class="text-xs font-bold uppercase tracking-wider text-amber-600">Simple & Accountable</span>
+          <h2 class="text-2xl sm:text-3xl font-extrabold text-slate-900 mt-1">How Grievance Redressal Works</h2>
+          <p class="text-sm text-slate-500 mt-2">Every submission receives an immutable tracking code and moves through strict departmental Service Level Agreements (SLAs).</p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+          
+          <div class="bg-white rounded-xl border border-slate-200 p-6 relative hover:shadow-md transition">
+            <div class="w-10 h-10 rounded-xl bg-amber-100 text-amber-800 font-bold flex items-center justify-center mb-4 text-sm">01</div>
+            <h3 class="text-base font-bold text-slate-900 mb-1">Lodge Grievance</h3>
+            <p class="text-xs text-slate-500 leading-relaxed">Provide location, photos, category, and description. System issues a unique ID e.g., <code class="bg-slate-100 px-1 py-0.5 rounded text-amber-700">GRV-2026-XXXX</code>.</p>
+          </div>
+
+          <div class="bg-white rounded-xl border border-slate-200 p-6 relative hover:shadow-md transition">
+            <div class="w-10 h-10 rounded-xl bg-sky-100 text-sky-800 font-bold flex items-center justify-center mb-4 text-sm">02</div>
+            <h3 class="text-base font-bold text-slate-900 mb-1">Official Assignment</h3>
+            <p class="text-xs text-slate-500 leading-relaxed">Automatically routed to the respective Department Head (PWD, Water Board, Electricity, etc.) and assigned to a field engineer.</p>
+          </div>
+
+          <div class="bg-white rounded-xl border border-slate-200 p-6 relative hover:shadow-md transition">
+            <div class="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-800 font-bold flex items-center justify-center mb-4 text-sm">03</div>
+            <h3 class="text-base font-bold text-slate-900 mb-1">Field Action</h3>
+            <p class="text-xs text-slate-500 leading-relaxed">Department conducts site inspection and ground repairs. Live status updates and progress notes are logged in real-time.</p>
+          </div>
+
+          <div class="bg-white rounded-xl border border-slate-200 p-6 relative hover:shadow-md transition">
+            <div class="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-800 font-bold flex items-center justify-center mb-4 text-sm">04</div>
+            <h3 class="text-base font-bold text-slate-900 mb-1">Verified Resolution</h3>
+            <p class="text-xs text-slate-500 leading-relaxed">Action notes posted, case marked Resolved, and citizen receives digital completion acknowledgement with audit certificate.</p>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Department Directory Grid -->
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
+        <div class="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4">
+          <div>
+            <span class="text-xs font-bold uppercase tracking-wider text-amber-600">Civic Jurisdiction</span>
+            <h2 class="text-2xl font-extrabold text-slate-900 mt-1">Covered Civic Departments</h2>
+            <p class="text-sm text-slate-500 mt-1">Direct integration with municipal departments operating under citizen charter SLAs.</p>
+          </div>
+          <button onclick="navigate('file-grievance')" class="text-xs font-bold text-amber-600 hover:text-amber-700 flex items-center">
+            View All Departments & File &rarr;
+          </button>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          
+          <div class="bg-white p-5 rounded-xl border border-slate-200 hover:border-amber-400 transition shadow-sm">
+            <div class="flex items-center space-x-3 mb-3">
+              <div class="w-10 h-10 rounded-lg bg-sky-50 text-sky-600 flex items-center justify-center">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/></svg>
+              </div>
+              <div>
+                <h4 class="text-sm font-bold text-slate-900">Water Supply & Sewage</h4>
+                <span class="text-[11px] font-mono font-semibold text-sky-700 bg-sky-50 px-2 py-0.5 rounded">SLA: 24h - 48h</span>
+              </div>
+            </div>
+            <p class="text-xs text-slate-500">Pipeline ruptures, contaminated water supply, sewage overflow, meter replacement.</p>
+          </div>
+
+          <div class="bg-white p-5 rounded-xl border border-slate-200 hover:border-amber-400 transition shadow-sm">
+            <div class="flex items-center space-x-3 mb-3">
+              <div class="w-10 h-10 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+              </div>
+              <div>
+                <h4 class="text-sm font-bold text-slate-900">Electricity & Power</h4>
+                <span class="text-[11px] font-mono font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded">SLA: 12h - 24h</span>
+              </div>
+            </div>
+            <p class="text-xs text-slate-500">Transformer faults, dangerous sparking, streetlight outage, voltage fluctuation.</p>
+          </div>
+
+          <div class="bg-white p-5 rounded-xl border border-slate-200 hover:border-amber-400 transition shadow-sm">
+            <div class="flex items-center space-x-3 mb-3">
+              <div class="w-10 h-10 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
+              </div>
+              <div>
+                <h4 class="text-sm font-bold text-slate-900">Public Works & Roads</h4>
+                <span class="text-[11px] font-mono font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded">SLA: 3 - 5 Days</span>
+              </div>
+            </div>
+            <p class="text-xs text-slate-500">Pothole filling, broken sidewalks, open storm drains, traffic island maintenance.</p>
+          </div>
+
+          <div class="bg-white p-5 rounded-xl border border-slate-200 hover:border-amber-400 transition shadow-sm">
+            <div class="flex items-center space-x-3 mb-3">
+              <div class="w-10 h-10 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+              </div>
+              <div>
+                <h4 class="text-sm font-bold text-slate-900">Solid Waste Management</h4>
+                <span class="text-[11px] font-mono font-semibold text-purple-700 bg-purple-50 px-2 py-0.5 rounded">SLA: 24 Hours</span>
+              </div>
+            </div>
+            <p class="text-xs text-slate-500">Overflowing community dumpsters, dead animal removal, debris clearing.</p>
+          </div>
+
+          <div class="bg-white p-5 rounded-xl border border-slate-200 hover:border-amber-400 transition shadow-sm">
+            <div class="flex items-center space-x-3 mb-3">
+              <div class="w-10 h-10 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>
+              </div>
+              <div>
+                <h4 class="text-sm font-bold text-slate-900">Public Health & Sanitation</h4>
+                <span class="text-[11px] font-mono font-semibold text-rose-700 bg-rose-50 px-2 py-0.5 rounded">SLA: 24h - 48h</span>
+              </div>
+            </div>
+            <p class="text-xs text-slate-500">Mosquito fogging, stagnant drain water, food hygiene violations at local markets.</p>
+          </div>
+
+          <div class="bg-white p-5 rounded-xl border border-slate-200 hover:border-amber-400 transition shadow-sm">
+            <div class="flex items-center space-x-3 mb-3">
+              <div class="w-10 h-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+              </div>
+              <div>
+                <h4 class="text-sm font-bold text-slate-900">Traffic & Law Enforcement</h4>
+                <span class="text-[11px] font-mono font-semibold text-blue-700 bg-blue-50 px-2 py-0.5 rounded">SLA: 24 Hours</span>
+              </div>
+            </div>
+            <p class="text-xs text-slate-500">Signal malfunctions, illegal parking blocking emergency hydrants, footway encroachments.</p>
+          </div>
+
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ============================================================================
+         VIEW 2: CITIZEN LODGE GRIEVANCE FORM
+         ============================================================================ -->
+    <section id="view-file-grievance" class="hidden max-w-4xl mx-auto px-4 sm:px-6 py-10">
+      <div class="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
+        
+        <!-- Form Header -->
+        <div class="bg-gov-navy-900 text-white p-6 sm:p-8 border-b border-slate-700">
+          <div class="flex items-center space-x-2 text-amber-400 text-xs font-bold uppercase tracking-wider mb-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            Citizen Grievance Redressal Mechanism
+          </div>
+          <h2 class="text-2xl font-extrabold text-white">Lodge a Public Grievance</h2>
+          <p class="text-xs text-slate-300 mt-1">
+            Please fill in accurate location and details to ensure rapid departmental inspection and action.
+          </p>
+        </div>
+
+        <!-- Form Body -->
+        <form id="form-file-grievance" class="p-6 sm:p-8 space-y-6">
+          
+          <!-- Grievance Title -->
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2" for="grievance-title">
+              Grievance Title / Subject <span class="text-rose-500">*</span>
+            </label>
+            <input 
+              type="text" 
+              id="grievance-title" 
+              required 
+              placeholder="e.g. Ruptured potable water main pipe causing road flooding"
+              class="w-full px-4 py-3 rounded-lg border border-slate-300 focus:ring-2 focus:ring-amber-500 focus:border-amber-500 text-sm placeholder-slate-400 transition"
+            />
+          </div>
+
+          <!-- Department & Priority -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2" for="grievance-department">
+                Civic Department Category <span class="text-rose-500">*</span>
+              </label>
+              <select 
+                id="grievance-department" 
+                required 
+                class="w-full px-4 py-3 rounded-lg border border-slate-300 focus:ring-2 focus:ring-amber-500 focus:border-amber-500 text-sm transition"
+              >
+                <!-- Populated dynamically -->
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2" for="grievance-priority">
+                Urgency / Priority Level <span class="text-rose-500">*</span>
+              </label>
+              <select 
+                id="grievance-priority" 
+                required 
+                class="w-full px-4 py-3 rounded-lg border border-slate-300 focus:ring-2 focus:ring-amber-500 focus:border-amber-500 text-sm transition"
+              >
+                <option value="Low">Low - Minor aesthetic / non-blocking maintenance (10-14 days)</option>
+                <option value="Medium" selected>Medium - General municipal issue (5-7 days)</option>
+                <option value="High">High - Impeding daily traffic / civic utility (48-72 hrs)</option>
+                <option value="Urgent">Urgent - Direct safety hazard / emergency threat (24 hrs)</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Location Information -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2" for="grievance-district">
+                District / Administrative Ward <span class="text-rose-500">*</span>
+              </label>
+              <input 
+                type="text" 
+                id="grievance-district" 
+                required 
+                placeholder="e.g. Central District / Ward 14"
+                class="w-full px-4 py-3 rounded-lg border border-slate-300 focus:ring-2 focus:ring-amber-500 focus:border-amber-500 text-sm placeholder-slate-400 transition"
+              />
+            </div>
+
+            <div>
+              <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2" for="grievance-location">
+                Exact Location / Landmark / Street <span class="text-rose-500">*</span>
+              </label>
+              <input 
+                type="text" 
+                id="grievance-location" 
+                required 
+                placeholder="e.g. Opposite City Hospital Gate 2, Ring Road"
+                class="w-full px-4 py-3 rounded-lg border border-slate-300 focus:ring-2 focus:ring-amber-500 focus:border-amber-500 text-sm placeholder-slate-400 transition"
+              />
+            </div>
+          </div>
+
+          <!-- Description -->
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2" for="grievance-description">
+              Detailed Description of the Issue <span class="text-rose-500">*</span>
+            </label>
+            <textarea 
+              id="grievance-description" 
+              rows="4" 
+              required 
+              placeholder="Provide specific details: duration of problem, impact on residents/traffic, any prior complaints..."
+              class="w-full px-4 py-3 rounded-lg border border-slate-300 focus:ring-2 focus:ring-amber-500 focus:border-amber-500 text-sm placeholder-slate-400 transition"
+            ></textarea>
+            <div class="text-[11px] text-slate-400 mt-1">Please avoid entering sensitive financial or identity numbers.</div>
+          </div>
+
+          <!-- Attachment URL (Optional) -->
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2" for="grievance-attachment">
+              Supporting Photo / Evidence URL (Optional)
+            </label>
+            <input 
+              type="url" 
+              id="grievance-attachment" 
+              placeholder="https://example.com/photo-evidence.jpg (or image link)"
+              class="w-full px-4 py-3 rounded-lg border border-slate-300 focus:ring-2 focus:ring-amber-500 focus:border-amber-500 text-sm placeholder-slate-400 transition"
+            />
+          </div>
+
+          <!-- Verification Checkbox -->
+          <div class="bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-start gap-3">
+            <input type="checkbox" id="citizen-declaration" required class="mt-1 h-4 w-4 text-amber-600 focus:ring-amber-500 rounded border-slate-300"/>
+            <label for="citizen-declaration" class="text-xs text-amber-900 leading-relaxed">
+              <strong>Citizen Undertaking:</strong> I declare that all information furnished is authentic and relates to a genuine public grievance within civic jurisdiction. I understand that false or defamatory complaints may lead to rejection.
+            </label>
+          </div>
+
+          <!-- Submit Buttons -->
+          <div class="flex flex-col sm:flex-row items-center justify-end gap-3 pt-4 border-t border-slate-200">
+            <button 
+              type="button" 
+              onclick="navigate('home')" 
+              class="w-full sm:w-auto px-6 py-3 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 text-xs font-bold uppercase tracking-wider transition"
+            >
+              Cancel
+            </button>
+            <button 
+              type="submit" 
+              id="submit-grievance-btn" 
+              class="w-full sm:w-auto px-8 py-3 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold uppercase tracking-wider shadow-lg hover:shadow-xl transition"
+            >
+              Submit Official Grievance
+            </button>
+          </div>
+
+        </form>
+
+      </div>
+    </section>
+
+    <!-- ============================================================================
+         VIEW 3: CITIZEN "MY GRIEVANCES"
+         ============================================================================ -->
+    <section id="view-my-grievances" class="hidden max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-6">
+      
+      <!-- Top Bar -->
+      <div class="bg-white rounded-xl border border-slate-200 p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <div class="text-xs font-bold uppercase tracking-wider text-amber-600">Citizen Self-Service Dashboard</div>
+          <h2 class="text-2xl font-extrabold text-slate-900 mt-1">My Registered Grievances</h2>
+          <p class="text-xs text-slate-500 mt-0.5">Track live progress, review official actions, and inspect complete lifecycle timelines.</p>
+        </div>
+
+        <div class="flex items-center gap-3">
+          <button onclick="navigate('file-grievance')" class="px-4 py-2.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold shadow-sm transition flex items-center">
+            <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+            Lodge New Grievance
+          </button>
+        </div>
+      </div>
+
+      <!-- Quick Metrics for Citizen -->
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div class="bg-white p-5 rounded-xl border border-slate-200 flex items-center justify-between">
+          <div>
+            <div class="text-xs font-semibold text-slate-500 uppercase">My Total Lodged</div>
+            <div id="citizen-total-count" class="text-2xl font-extrabold text-slate-900 mt-1">0</div>
+          </div>
+          <div class="w-10 h-10 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center font-bold">📋</div>
+        </div>
+
+        <div class="bg-white p-5 rounded-xl border border-slate-200 flex items-center justify-between">
+          <div>
+            <div class="text-xs font-semibold text-amber-600 uppercase">Pending / In Progress</div>
+            <div id="citizen-pending-count" class="text-2xl font-extrabold text-amber-600 mt-1">0</div>
+          </div>
+          <div class="w-10 h-10 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center font-bold">⏳</div>
+        </div>
+
+        <div class="bg-white p-5 rounded-xl border border-slate-200 flex items-center justify-between">
+          <div>
+            <div class="text-xs font-semibold text-emerald-600 uppercase">Resolved Cases</div>
+            <div id="citizen-resolved-count" class="text-2xl font-extrabold text-emerald-600 mt-1">0</div>
+          </div>
+          <div class="w-10 h-10 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">✓</div>
+        </div>
+      </div>
+
+      <!-- Grievances List Container -->
+      <div id="citizen-grievances-list" class="space-y-4">
+        <!-- Rendered by app.js -->
+      </div>
+
+    </section>
+
+    <!-- ============================================================================
+         VIEW 4: OFFICIAL & ADMIN DASHBOARD
+         ============================================================================ -->
+    <section id="view-dashboard" class="hidden max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-6">
+      
+      <!-- Dashboard Header -->
+      <div class="bg-gov-navy-900 text-white rounded-2xl p-6 sm:p-8 border border-slate-800 shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <div class="inline-flex items-center gap-2 px-3 py-1 rounded bg-amber-500/20 text-amber-300 text-xs font-bold uppercase tracking-wider mb-2">
+            <span class="w-2 h-2 rounded-full bg-amber-400 animate-ping"></span>
+            Executive Redressal Command Desk
+          </div>
+          <h2 class="text-2xl sm:text-3xl font-extrabold text-white">Grievance Management & Redressal</h2>
+          <p id="official-dept-banner" class="text-xs text-slate-300 mt-1 hidden"></p>
+        </div>
+
+        <div class="flex items-center gap-3">
+          <button onclick="exportGrievancesToCSV()" class="px-4 py-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-white border border-slate-600 text-xs font-semibold shadow-sm transition flex items-center">
+            <svg class="w-4 h-4 mr-1.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+            Export CSV Report
+          </button>
+        </div>
+      </div>
+
+      <!-- Dashboard Metric Cards -->
+      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+        
+        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm text-center">
+          <div class="text-[11px] font-bold text-slate-500 uppercase">Total Tickets</div>
+          <div id="metric-total" class="text-2xl font-black text-slate-900 mt-1">0</div>
+        </div>
+
+        <div class="bg-white p-4 rounded-xl border border-amber-200 bg-amber-50/40 shadow-sm text-center">
+          <div class="text-[11px] font-bold text-amber-700 uppercase">Pending Action</div>
+          <div id="metric-pending" class="text-2xl font-black text-amber-600 mt-1">0</div>
+        </div>
+
+        <div class="bg-white p-4 rounded-xl border border-sky-200 bg-sky-50/40 shadow-sm text-center">
+          <div class="text-[11px] font-bold text-sky-700 uppercase">In Progress</div>
+          <div id="metric-inprogress" class="text-2xl font-black text-sky-600 mt-1">0</div>
+        </div>
+
+        <div class="bg-white p-4 rounded-xl border border-emerald-200 bg-emerald-50/40 shadow-sm text-center">
+          <div class="text-[11px] font-bold text-emerald-700 uppercase">Resolved Cases</div>
+          <div id="metric-resolved" class="text-2xl font-black text-emerald-600 mt-1">0</div>
+        </div>
+
+        <div class="bg-white p-4 rounded-xl border border-rose-200 bg-rose-50/40 shadow-sm text-center">
+          <div class="text-[11px] font-bold text-rose-700 uppercase">Rejected / Escalated</div>
+          <div id="metric-rejected" class="text-2xl font-black text-rose-600 mt-1">0</div>
+        </div>
+
+        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm text-center">
+          <div class="text-[11px] font-bold text-slate-500 uppercase">Resolution Rate</div>
+          <div id="metric-rate" class="text-2xl font-black text-amber-600 mt-1">0%</div>
+        </div>
+
+      </div>
+
+      <!-- Filters & Search Toolbar -->
+      <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          
+          <!-- Department Filter -->
+          <div>
+            <label class="block text-[11px] font-bold uppercase text-slate-600 mb-1" for="filter-department">Filter Department</label>
+            <select id="filter-department" class="w-full text-xs px-3 py-2.5 rounded-lg border border-slate-300 focus:ring-1 focus:ring-amber-500">
+              <option value="all">All Departments</option>
+            </select>
+          </div>
+
+          <!-- Status Filter -->
+          <div>
+            <label class="block text-[11px] font-bold uppercase text-slate-600 mb-1" for="filter-status">Filter Status</label>
+            <select id="filter-status" class="w-full text-xs px-3 py-2.5 rounded-lg border border-slate-300 focus:ring-1 focus:ring-amber-500">
+              <option value="all">All Statuses</option>
+              <option value="Pending">Pending</option>
+              <option value="In Progress">In Progress</option>
+              <option value="Resolved">Resolved</option>
+              <option value="Rejected">Rejected</option>
+            </select>
+          </div>
+
+          <!-- Priority Filter -->
+          <div>
+            <label class="block text-[11px] font-bold uppercase text-slate-600 mb-1" for="filter-priority">Filter Priority</label>
+            <select id="filter-priority" class="w-full text-xs px-3 py-2.5 rounded-lg border border-slate-300 focus:ring-1 focus:ring-amber-500">
+              <option value="all">All Priorities</option>
+              <option value="Urgent">Urgent</option>
+              <option value="High">High</option>
+              <option value="Medium">Medium</option>
+              <option value="Low">Low</option>
+            </select>
+          </div>
+
+          <!-- Search Filter -->
+          <div>
+            <label class="block text-[11px] font-bold uppercase text-slate-600 mb-1" for="filter-search">Search Keyword</label>
+            <input 
+              type="text" 
+              id="filter-search" 
+              placeholder="Search by ID, name, ward, title..." 
+              class="w-full text-xs px-3 py-2.5 rounded-lg border border-slate-300 focus:ring-1 focus:ring-amber-500"
+            />
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Grievance Data Table -->
+      <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="bg-slate-900 text-white text-[11px] font-bold uppercase tracking-wider">
+                <th class="px-4 py-3.5">Tracking ID</th>
+                <th class="px-4 py-3.5">Subject & Citizen</th>
+                <th class="px-4 py-3.5">Department</th>
+                <th class="px-4 py-3.5">Priority</th>
+                <th class="px-4 py-3.5">Status</th>
+                <th class="px-4 py-3.5">Assigned Official</th>
+                <th class="px-4 py-3.5 text-right">Action</th>
+              </tr>
+            </thead>
+            <tbody id="admin-grievances-table-body" class="divide-y divide-slate-100 text-xs">
+              <!-- Populated by app.js -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ============================================================================
+         VIEW 5: PUBLIC ANALYTICS & CIVIC TRANSPARENCY
+         ============================================================================ -->
+    <section id="view-analytics" class="hidden max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
+      
+      <div class="text-center max-w-3xl mx-auto">
+        <span class="text-xs font-bold uppercase tracking-wider text-amber-600">Open Governance & Accountability</span>
+        <h2 class="text-3xl font-extrabold text-slate-900 mt-1">Public Redressal Analytics</h2>
+        <p class="text-sm text-slate-500 mt-2">
+          Real-time metrics demonstrating departmental responsiveness, Service Level Agreement (SLA) fulfillment, and resolution efficiency across all civic boards.
+        </p>
+      </div>
+
+      <!-- High Level Metrics -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="bg-white p-6 rounded-xl border border-slate-200 text-center shadow-sm">
+          <div class="text-xs font-semibold text-slate-400 uppercase">Total Received</div>
+          <div id="analytics-total" class="text-3xl font-extrabold text-slate-900 mt-1">0</div>
+        </div>
+        <div class="bg-white p-6 rounded-xl border border-slate-200 text-center shadow-sm">
+          <div class="text-xs font-semibold text-emerald-600 uppercase">Resolved</div>
+          <div id="analytics-resolved" class="text-3xl font-extrabold text-emerald-600 mt-1">0</div>
+        </div>
+        <div class="bg-white p-6 rounded-xl border border-slate-200 text-center shadow-sm">
+          <div class="text-xs font-semibold text-sky-600 uppercase">In Progress</div>
+          <div id="analytics-inprogress" class="text-3xl font-extrabold text-sky-600 mt-1">0</div>
+        </div>
+        <div class="bg-white p-6 rounded-xl border border-slate-200 text-center shadow-sm">
+          <div class="text-xs font-semibold text-amber-600 uppercase">Pending Intake</div>
+          <div id="analytics-pending" class="text-3xl font-extrabold text-amber-600 mt-1">0</div>
+        </div>
+      </div>
+
+      <!-- Analytics Breakdown Grid -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        
+        <!-- Department Performance -->
+        <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+          <div class="flex items-center justify-between mb-6">
+            <h3 class="text-base font-bold text-slate-900">Department-wise Resolution Rate</h3>
+            <span class="text-xs text-slate-400">Live Computed</span>
+          </div>
+          <div id="analytics-department-breakdown">
+            <!-- Rendered by app.js -->
+          </div>
+        </div>
+
+        <!-- Priority Breakdown & Live Resolution Feed -->
+        <div class="space-y-6">
+          <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+            <div class="flex items-center justify-between mb-4">
+              <h3 class="text-base font-bold text-slate-900">Grievance Distribution by Priority</h3>
+              <span class="text-xs text-slate-400">Urgency Classification</span>
+            </div>
+            <div id="analytics-priority-breakdown">
+              <!-- Rendered by app.js -->
+            </div>
+          </div>
+
+          <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+            <div class="flex items-center justify-between mb-4">
+              <h3 class="text-base font-bold text-slate-900">Recent Official Resolutions Feed</h3>
+              <span class="text-xs text-emerald-600 font-semibold">Live Ticker</span>
+            </div>
+            <div id="analytics-recent-feed">
+              <!-- Rendered by app.js -->
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </section>
+
+    <!-- ============================================================================
+         VIEW 6: PUBLIC TRACKING & SEARCH
+         ============================================================================ -->
+    <section id="view-public-track" class="hidden max-w-4xl mx-auto px-4 sm:px-6 py-10 space-y-8">
+      
+      <div class="bg-white rounded-2xl shadow-lg border border-slate-200 p-6 sm:p-8">
+        <div class="text-center max-w-xl mx-auto mb-6">
+          <span class="text-xs font-bold uppercase tracking-wider text-amber-600">No Login Required</span>
+          <h2 class="text-2xl font-extrabold text-slate-900 mt-1">Check Grievance Status & Timeline</h2>
+          <p class="text-xs text-slate-500 mt-1">Enter your assigned alphanumeric tracking token to view the complete verified audit trail.</p>
+        </div>
+
+        <div class="max-w-xl mx-auto flex gap-2">
+          <input 
+            type="text" 
+            id="public-tracking-input" 
+            placeholder="e.g. GRV-2026-1001" 
+            class="flex-1 px-4 py-3 rounded-lg border border-slate-300 focus:ring-2 focus:ring-amber-500 text-sm font-mono uppercase"
+          />
+          <button 
+            id="public-track-btn" 
+            class="px-6 py-3 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs uppercase tracking-wider rounded-lg shadow transition"
+          >
+            Search
+          </button>
+        </div>
+      </div>
+
+      <!-- Result Card (Found) -->
+      <div id="public-track-result" class="hidden bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
+        
+        <div class="bg-gov-navy-900 text-white p-6 border-b border-slate-800 flex flex-wrap justify-between items-center gap-4">
+          <div>
+            <div class="text-xs text-amber-400 font-mono font-bold" id="track-res-id">GRV-2026-XXXX</div>
+            <h3 class="text-lg font-bold text-white mt-1" id="track-res-title">Grievance Subject</h3>
+          </div>
+          <div class="flex items-center gap-2">
+            <div id="track-res-status"></div>
+            <div id="track-res-priority"></div>
+          </div>
+        </div>
+
+        <div class="p-6 space-y-6">
+          <!-- Metadata grid -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-100 text-xs">
+            <div>
+              <span class="text-slate-400 block font-medium">Department</span>
+              <span class="font-bold text-slate-800" id="track-res-dept">N/A</span>
+            </div>
+            <div>
+              <span class="text-slate-400 block font-medium">Lodged Date</span>
+              <span class="font-bold text-slate-800" id="track-res-date">N/A</span>
+            </div>
+            <div>
+              <span class="text-slate-400 block font-medium">Location</span>
+              <span class="font-bold text-slate-800" id="track-res-location">N/A</span>
+            </div>
+            <div>
+              <span class="text-slate-400 block font-medium">Citizen (Masked)</span>
+              <span class="font-bold text-slate-800 font-mono" id="track-res-citizen">L*** S**</span>
+            </div>
+          </div>
+
+          <!-- Description -->
+          <div>
+            <h4 class="text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">Grievance Details</h4>
+            <p class="text-xs text-slate-700 bg-white border border-slate-200 p-3 rounded-lg leading-relaxed" id="track-res-desc"></p>
+          </div>
+
+          <!-- Chronological Timeline -->
+          <div>
+            <h4 class="text-xs font-bold uppercase tracking-wider text-slate-600 mb-3">Redressal Audit Trail & Logs</h4>
+            <div id="track-res-timeline" class="bg-slate-50 p-4 rounded-xl border border-slate-200">
+              <!-- Rendered by app.js -->
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Result Card (Not Found) -->
+      <div id="public-track-notfound" class="hidden bg-white rounded-2xl shadow-lg border border-slate-200 p-8 text-center space-y-4">
+        <div class="w-12 h-12 bg-rose-50 text-rose-500 rounded-full flex items-center justify-center mx-auto text-xl font-bold">
+          !
+        </div>
+        <h3 class="text-base font-bold text-slate-800">Grievance Token Not Found</h3>
+        <p class="text-xs text-slate-500 max-w-md mx-auto">
+          No active or archived record corresponds to tracking code <strong id="notfound-id" class="font-mono text-slate-800"></strong>. Please check your acknowledgement slip or try one of our demo tracking codes:
+        </p>
+        <div class="flex flex-wrap justify-center gap-2 pt-2">
+          <button onclick="tryDemoTracking('GRV-2026-1001')" class="px-3 py-1.5 rounded bg-slate-100 hover:bg-slate-200 text-xs font-mono font-semibold text-slate-800">
+            GRV-2026-1001
+          </button>
+          <button onclick="tryDemoTracking('GRV-2026-1002')" class="px-3 py-1.5 rounded bg-slate-100 hover:bg-slate-200 text-xs font-mono font-semibold text-slate-800">
+            GRV-2026-1002
+          </button>
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- ==============================================================================
+       FOOTER
+       ============================================================================== -->
+  <footer class="bg-gov-navy-950 text-slate-400 text-xs border-t border-slate-800 py-10 px-4 sm:px-6 lg:px-8 mt-auto">
+    <div class="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-8">
+      
+      <div class="space-y-3 md:col-span-2">
+        <div class="flex items-center space-x-2">
+          <div class="w-6 h-6 rounded bg-amber-500 flex items-center justify-center text-slate-900 font-black text-xs">J</div>
+          <span class="text-sm font-bold text-white font-emblem">JANSEVA PGRRS</span>
+        </div>
+        <p class="text-xs text-slate-400 max-w-md leading-relaxed">
+          National Public Grievance Registration and Resolution System. An enterprise civic transparency portal empowering citizens to interact with municipal authorities, monitor SLAs, and secure swift civic redressal.
+        </p>
+        <div class="flex items-center space-x-4 text-[11px] text-slate-500 pt-2">
+          <span>Backend: Supabase PostgreSQL</span>
+          <span>•</span>
+          <span>Framework: Vanilla Modern Web Standards</span>
+          <span>•</span>
+          <span>Ready for Vercel</span>
+        </div>
+      </div>
+
+      <div>
+        <h4 class="text-xs font-bold uppercase tracking-wider text-slate-200 mb-3">Quick Navigation</h4>
+        <ul class="space-y-2 text-xs">
+          <li><a href="#" onclick="navigate('home')" class="hover:text-amber-400 transition">Citizen Home</a></li>
+          <li><a href="#" onclick="navigate('public-track')" class="hover:text-amber-400 transition">Track Any Grievance</a></li>
+          <li><a href="#" onclick="navigate('analytics')" class="hover:text-amber-400 transition">Public Performance Analytics</a></li>
+          <li><a href="#" onclick="openSqlModal()" class="hover:text-amber-400 transition">Supabase Database Setup</a></li>
+        </ul>
+      </div>
+
+      <div>
+        <h4 class="text-xs font-bold uppercase tracking-wider text-slate-200 mb-3">Citizen Helpline</h4>
+        <p class="text-xs text-slate-400 leading-relaxed mb-2">Toll-Free Civic Support Hotline: <strong>1800-11-2026</strong> (24x7 Helpline)</p>
+        <p class="text-xs text-slate-400">Email: <span class="text-amber-400">support.grievance@civic.gov</span></p>
+      </div>
+
+    </div>
+
+    <div class="max-w-7xl mx-auto border-t border-slate-800/80 mt-8 pt-6 flex flex-col sm:flex-row justify-between items-center text-[11px] text-slate-500 gap-2">
+      <div>&copy; 2026 Department of Administrative Reforms & Public Grievances. All Rights Reserved.</div>
+      <div class="flex space-x-4">
+        <span>Terms of Service</span>
+        <span>Privacy Policy</span>
+        <span>Citizen Charter</span>
+      </div>
+    </div>
+  </footer>
+
+  <!-- ==============================================================================
+       MODAL 1: AUTHENTICATION (Sign In / Register)
+       ============================================================================== -->
+  <div id="auth-modal" class="hidden fixed inset-0 z-50 overflow-y-auto bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full shadow-2xl border border-slate-200 overflow-hidden transform transition-all">
+      
+      <!-- Modal Header -->
+      <div class="bg-gov-navy-900 text-white p-6 border-b border-slate-800 relative">
+        <button onclick="closeAuthModal()" class="absolute right-4 top-4 text-slate-400 hover:text-white text-xl font-bold">&times;</button>
+        <div class="text-xs text-amber-400 font-bold uppercase tracking-wider">Civic Access Gateway</div>
+        <h3 class="text-xl font-bold text-white mt-1">Authenticate Profile</h3>
+        <p class="text-xs text-slate-400 mt-0.5">Direct integration with Supabase <code class="text-amber-300">profiles</code> table</p>
+      </div>
+
+      <!-- Quick Demo Access Bar -->
+      <div class="bg-slate-100 p-3 border-b border-slate-200 text-xs">
+        <div class="text-[11px] font-bold text-slate-600 mb-1.5 flex items-center">
+          <span class="w-1.5 h-1.5 rounded-full bg-amber-500 mr-1.5"></span>
+          1-Click Instant Demo Login:
+        </div>
+        <div class="grid grid-cols-3 gap-1.5">
+          <button onclick="quickDemoLogin('citizen')" class="py-1.5 px-2 bg-white hover:bg-emerald-50 text-emerald-800 border border-emerald-300 rounded text-[11px] font-semibold transition">
+            Citizen
+          </button>
+          <button onclick="quickDemoLogin('official')" class="py-1.5 px-2 bg-white hover:bg-sky-50 text-sky-800 border border-sky-300 rounded text-[11px] font-semibold transition">
+            Official
+          </button>
+          <button onclick="quickDemoLogin('admin')" class="py-1.5 px-2 bg-white hover:bg-amber-50 text-amber-800 border border-amber-300 rounded text-[11px] font-semibold transition">
+            Admin
+          </button>
+        </div>
+      </div>
+
+      <!-- Tabs -->
+      <div class="flex border-b border-slate-200 bg-slate-50">
+        <button id="tab-signin-btn" onclick="switchAuthTab('signin')" class="flex-1 py-3 text-sm font-semibold text-amber-600 border-b-2 border-amber-500">
+          Sign In
+        </button>
+        <button id="tab-signup-btn" onclick="switchAuthTab('signup')" class="flex-1 py-3 text-sm font-medium text-slate-500 hover:text-slate-800 border-b-2 border-transparent">
+          Register Citizen
+        </button>
+      </div>
+
+      <!-- Sign In Form -->
+      <form id="auth-signin-form" class="p-6 space-y-4">
+        <div>
+          <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1" for="signin-email">Email Address</label>
+          <input 
+            type="email" 
+            id="signin-email" 
+            required 
+            placeholder="citizen@civic.gov" 
+            class="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-amber-500 text-sm"
+          />
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1" for="signin-password">Password</label>
+          <input 
+            type="password" 
+            id="signin-password" 
+            required 
+            placeholder="••••••••" 
+            class="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-amber-500 text-sm"
+          />
+        </div>
+
+        <button 
+          type="submit" 
+          id="signin-submit-btn" 
+          class="w-full py-3 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs uppercase tracking-wider rounded-lg shadow transition mt-2"
+        >
+          Sign In to Civic Portal
+        </button>
+      </form>
+
+      <!-- Sign Up Form -->
+      <form id="auth-signup-form" class="hidden p-6 space-y-3 max-h-[70vh] overflow-y-auto">
+        <div>
+          <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1" for="signup-name">Full Name</label>
+          <input 
+            type="text" 
+            id="signup-name" 
+            required 
+            placeholder="e.g. Likith Sai" 
+            class="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-amber-500 text-xs"
+          />
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1" for="signup-email">Official Email</label>
+          <input 
+            type="email" 
+            id="signup-email" 
+            required 
+            placeholder="name@example.com" 
+            class="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-amber-500 text-xs"
+          />
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1" for="signup-phone">Mobile Phone</label>
+            <input 
+              type="tel" 
+              id="signup-phone" 
+              required 
+              placeholder="+91 98765 43210" 
+              class="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-amber-500 text-xs"
+            />
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1" for="signup-district">District / Ward</label>
+            <input 
+              type="text" 
+              id="signup-district" 
+              required 
+              placeholder="Central District" 
+              class="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-amber-500 text-xs"
+            />
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1" for="signup-role">Portal Role</label>
+          <select id="signup-role" class="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-amber-500 text-xs">
+            <option value="citizen" selected>Citizen (General Public)</option>
+            <option value="official">Department Official</option>
+            <option value="admin">Administrator (Super Admin)</option>
+          </select>
+        </div>
+
+        <div id="signup-dept-wrapper" class="hidden">
+          <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1" for="signup-department">Department Allocation</label>
+          <select id="signup-department" class="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-amber-500 text-xs">
+            <!-- Loaded dynamically -->
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1" for="signup-password">Secure Password</label>
+          <input 
+            type="password" 
+            id="signup-password" 
+            required 
+            placeholder="At least 6 characters" 
+            class="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-amber-500 text-xs"
+          />
+        </div>
+
+        <button 
+          type="submit" 
+          id="signup-submit-btn" 
+          class="w-full py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs uppercase tracking-wider rounded-lg shadow transition mt-2"
+        >
+          Complete Civic Registration
+        </button>
+      </form>
+
+    </div>
+  </div>
+
+  <!-- ==============================================================================
+       MODAL 2: UPDATE GRIEVANCE & LOG AUDIT (Official / Admin)
+       ============================================================================== -->
+  <div id="update-grievance-modal" class="hidden fixed inset-0 z-50 overflow-y-auto bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-2xl w-full shadow-2xl border border-slate-200 overflow-hidden">
+      
+      <div class="bg-gov-navy-900 text-white p-6 border-b border-slate-800 flex justify-between items-center">
+        <div>
+          <span class="text-amber-400 font-mono text-xs font-bold" id="modal-update-tracking-id">GRV-2026-XXXX</span>
+          <h3 class="text-lg font-bold text-white mt-0.5">Official Action & Resolution Desk</h3>
+        </div>
+        <button onclick="closeUpdateModal()" class="text-slate-400 hover:text-white text-xl font-bold">&times;</button>
+      </div>
+
+      <div class="p-6 space-y-5 max-h-[75vh] overflow-y-auto">
+        <!-- Grievance Brief -->
+        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 text-xs space-y-2">
+          <div class="font-bold text-sm text-slate-900" id="modal-update-title">Title</div>
+          <div class="grid grid-cols-2 gap-2 text-slate-600">
+            <div>Department: <strong class="text-slate-800" id="modal-update-dept"></strong></div>
+            <div>Citizen: <strong class="text-slate-800" id="modal-update-citizen"></strong></div>
+            <div class="col-span-2">Location: <strong class="text-slate-800" id="modal-update-location"></strong></div>
+          </div>
+          <div class="pt-1 text-slate-700 italic border-t border-slate-200/60" id="modal-update-description"></div>
+        </div>
+
+        <!-- Update Action Controls -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-bold uppercase text-slate-700 mb-1" for="update-status-select">
+              Update Status <span class="text-rose-500">*</span>
+            </label>
+            <select id="update-status-select" class="w-full text-xs px-3 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-amber-500 font-semibold">
+              <option value="Pending">Pending (Under Initial Review)</option>
+              <option value="In Progress">In Progress (Field Team Dispatched)</option>
+              <option value="Resolved">Resolved (Work Completed & Verified)</option>
+              <option value="Rejected">Rejected (Out of Civic Scope / Invalid)</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold uppercase text-slate-700 mb-1" for="update-assigned-official">
+              Assign Responsible Official
+            </label>
+            <select id="update-assigned-official" class="w-full text-xs px-3 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-amber-500">
+              <!-- Populated by app.js -->
+            </select>
+          </div>
+        </div>
+
+        <!-- Resolution Notes & Remarks -->
+        <div>
+          <label class="block text-xs font-bold uppercase text-slate-700 mb-1" for="update-resolution-notes">
+            Official Action Notes / Resolution Summary <span class="text-rose-500">*</span>
+          </label>
+          <textarea 
+            id="update-resolution-notes" 
+            rows="3" 
+            placeholder="Describe action taken, inspection findings, contractor deployed, or justification..."
+            class="w-full text-xs px-3 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-amber-500 leading-relaxed"
+          ></textarea>
+          <div class="text-[11px] text-slate-400 mt-1">
+            This entry will automatically be timestamped and appended to the permanent <code class="text-amber-600">grievance_logs</code> audit trail.
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-slate-50 p-4 border-t border-slate-200 flex justify-end gap-3">
+        <button onclick="closeUpdateModal()" class="px-4 py-2 text-xs font-bold uppercase text-slate-600 hover:text-slate-800">
+          Cancel
+        </button>
+        <button id="btn-save-grievance-update" class="px-6 py-2.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold uppercase tracking-wider rounded-lg shadow transition">
+          Save Changes & Log Audit Entry
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ==============================================================================
+       MODAL 3: LIFECYCLE TIMELINE (from grievance_logs)
+       ============================================================================== -->
+  <div id="timeline-modal" class="hidden fixed inset-0 z-50 overflow-y-auto bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-2xl w-full shadow-2xl border border-slate-200 overflow-hidden">
+      
+      <div class="bg-gov-navy-900 text-white p-6 border-b border-slate-800 flex justify-between items-center">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="text-amber-400 font-mono text-xs font-bold" id="modal-timeline-tracking-id">GRV-2026-XXXX</span>
+            <span id="modal-timeline-status-badge"></span>
+            <span id="modal-timeline-priority-badge"></span>
+          </div>
+          <h3 class="text-base font-bold text-white mt-1" id="modal-timeline-title">Grievance Subject</h3>
+        </div>
+        <button onclick="closeTimelineModal()" class="text-slate-400 hover:text-white text-xl font-bold">&times;</button>
+      </div>
+
+      <div class="p-6 space-y-6 max-h-[75vh] overflow-y-auto">
+        <!-- Quick Meta -->
+        <div class="grid grid-cols-2 gap-3 text-xs bg-slate-50 p-3.5 rounded-lg border border-slate-200 text-slate-600">
+          <div>Department: <strong class="text-slate-800" id="modal-timeline-dept"></strong></div>
+          <div>Citizen: <strong class="text-slate-800" id="modal-timeline-citizen"></strong></div>
+          <div class="col-span-2">Location: <strong class="text-slate-800" id="modal-timeline-location"></strong></div>
+          <div class="col-span-2 text-slate-700 italic border-t border-slate-200 pt-2" id="modal-timeline-desc"></div>
+        </div>
+
+        <!-- Stepper / Logs container -->
+        <div>
+          <h4 class="text-xs font-bold uppercase tracking-wider text-slate-600 mb-4 flex items-center">
+            <svg class="w-4 h-4 mr-1 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            Complete Resolution Lifecycle History
+          </h4>
+          <div id="timeline-logs-container">
+            <!-- Populated by app.js -->
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-slate-50 p-4 border-t border-slate-200 flex justify-end">
+        <button onclick="closeTimelineModal()" class="px-5 py-2 bg-slate-800 text-white text-xs font-semibold rounded-lg hover:bg-slate-900 transition">
+          Close Audit View
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ==============================================================================
+       MODAL 4: ACKNOWLEDGEMENT RECEIPT (Printable)
+       ============================================================================== -->
+  <div id="receipt-modal" class="hidden fixed inset-0 z-50 overflow-y-auto bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-lg w-full shadow-2xl border border-slate-200 overflow-hidden">
+      
+      <!-- Card for Printing -->
+      <div id="printable-receipt-card" class="p-8 space-y-6">
+        
+        <!-- Official Government Header on Receipt -->
+        <div class="text-center border-b-2 border-slate-900 pb-4">
+          <div class="w-12 h-12 mx-auto rounded-full bg-slate-900 text-amber-400 flex items-center justify-center font-bold text-xl mb-2 font-emblem">
+            🏛️
+          </div>
+          <h2 class="text-lg font-black tracking-tight text-slate-900 font-emblem">GOVERNMENT OF INDIA</h2>
+          <div class="text-[11px] font-bold text-slate-700 uppercase">National Public Grievance Redressal System (PGRRS)</div>
+          <div class="text-[10px] text-slate-500 mt-0.5">Official Citizen Acknowledgement & Tracking Voucher</div>
+        </div>
+
+        <!-- Tracking Code Banner -->
+        <div class="bg-slate-50 border-2 border-dashed border-amber-500/80 rounded-xl p-4 text-center">
+          <div class="text-xs uppercase font-bold text-slate-500 tracking-wider">Unique Grievance Tracking ID</div>
+          <div id="receipt-tracking-id" class="text-2xl font-black font-mono text-slate-900 my-1 tracking-widest text-amber-600">
+            GRV-2026-XXXX
+          </div>
+          <div class="text-[10px] text-slate-500">Quote this ID for all official enquiries or public tracking</div>
+        </div>
+
+        <!-- Detail Table -->
+        <div class="space-y-2.5 text-xs">
+          <div class="flex justify-between border-b border-slate-100 py-1.5">
+            <span class="text-slate-500 font-medium">Applicant Name:</span>
+            <span class="font-bold text-slate-900" id="receipt-citizen-name">Likith Sai</span>
+          </div>
+          <div class="flex justify-between border-b border-slate-100 py-1.5">
+            <span class="text-slate-500 font-medium">Date & Timestamp:</span>
+            <span class="font-bold text-slate-900" id="receipt-date">Nov 01, 2026</span>
+          </div>
+          <div class="flex justify-between border-b border-slate-100 py-1.5">
+            <span class="text-slate-500 font-medium">Assigned Department:</span>
+            <span class="font-bold text-slate-900" id="receipt-department">Water Board</span>
+          </div>
+          <div class="flex justify-between border-b border-slate-100 py-1.5">
+            <span class="text-slate-500 font-medium">Priority Level:</span>
+            <span id="receipt-priority">Urgent</span>
+          </div>
+          <div class="flex justify-between border-b border-slate-100 py-1.5">
+            <span class="text-slate-500 font-medium">Incident Location:</span>
+            <span class="font-bold text-slate-900 text-right max-w-xs" id="receipt-location">4th Cross Road</span>
+          </div>
+          <div class="pt-1">
+            <span class="text-slate-500 font-medium block mb-1">Subject:</span>
+            <div class="font-semibold text-slate-800 bg-slate-50 p-2.5 rounded border border-slate-100" id="receipt-title"></div>
+          </div>
+        </div>
+
+        <!-- Civic Stamp Simulation -->
+        <div class="flex items-center justify-between pt-4 border-t border-slate-200 text-[10px] text-slate-400">
+          <div>
+            <div>Digitally Registered through</div>
+            <div class="font-mono font-semibold text-slate-600">JanSeva Portal Gateway</div>
+          </div>
+          <div class="border-2 border-emerald-600 text-emerald-700 px-3 py-1 rounded font-bold uppercase rotate-[-3deg] text-[10px]">
+            ✓ VERIFIED INTAKE
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Action Buttons (no-print) -->
+      <div class="bg-slate-50 p-4 border-t border-slate-200 flex justify-end gap-3 no-print">
+        <button onclick="window.print()" class="px-4 py-2.5 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded-lg transition flex items-center">
+          <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+          Print Slip
+        </button>
+        <button onclick="closeReceiptModal()" class="px-5 py-2.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-lg transition">
+          View in My Grievances
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ==============================================================================
+       MODAL 5: SUPABASE SCHEMA & SQL SETUP
+       ============================================================================== -->
+  <div id="sql-setup-modal" class="hidden fixed inset-0 z-50 overflow-y-auto bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-3xl w-full shadow-2xl border border-slate-200 overflow-hidden">
+      
+      <div class="bg-gov-navy-900 text-white p-6 border-b border-slate-800 flex justify-between items-center">
+        <div>
+          <span class="text-amber-400 text-xs font-bold uppercase tracking-wider">Database Architecture</span>
+          <h3 class="text-lg font-bold text-white mt-0.5">Supabase PostgreSQL Schema Setup</h3>
+        </div>
+        <button onclick="closeSqlModal()" class="text-slate-400 hover:text-white text-xl font-bold">&times;</button>
+      </div>
+
+      <div class="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
+        <div class="bg-amber-50 border border-amber-200 p-4 rounded-xl text-xs text-amber-900 space-y-1">
+          <div class="font-bold">Instructions to run on Supabase:</div>
+          <div>1. Go to your Supabase Project: <a href="https://supabase.com/dashboard/project/kihkzjzgpuenbetlrsxp/sql" target="_blank" class="text-amber-700 font-bold underline">Supabase SQL Editor (kihkzjzgpuenbetlrsxp)</a></div>
+          <div>2. Paste the SQL script below and click <strong>Run</strong>.</div>
+          <div>3. Once executed, click "Check Connection Again" below to sync with live Supabase PostgreSQL!</div>
+        </div>
+
+        <div class="relative">
+          <div class="flex justify-between items-center bg-slate-900 text-slate-300 px-4 py-2 rounded-t-lg text-xs">
+            <span class="font-mono">schema.sql</span>
+            <button onclick="copySqlToClipboard()" class="text-amber-400 hover:text-amber-300 font-semibold flex items-center">
+              Copy SQL Script
+            </button>
+          </div>
+          <pre id="sql-code-snippet" class="bg-slate-950 text-slate-200 p-4 rounded-b-lg text-[11px] font-mono overflow-x-auto max-h-64 leading-relaxed">
+-- SUPABASE POSTGRESQL DDL SCHEMA
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+DROP TABLE IF EXISTS grievance_logs CASCADE;
+DROP TABLE IF EXISTS grievances CASCADE;
+DROP TABLE IF EXISTS profiles CASCADE;
+DROP TABLE IF EXISTS departments CASCADE;
+
+CREATE TABLE departments (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    code TEXT NOT NULL UNIQUE,
+    description TEXT,
+    head_official TEXT,
+    icon TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE profiles (
+    id TEXT PRIMARY KEY,
+    email TEXT UNIQUE NOT NULL,
+    password TEXT NOT NULL,
+    full_name TEXT NOT NULL,
+    phone TEXT,
+    role TEXT NOT NULL CHECK (role IN ('citizen', 'official', 'admin')),
+    department_id TEXT REFERENCES departments(id) ON DELETE SET NULL,
+    district TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE grievances (
+    id TEXT PRIMARY KEY,
+    tracking_id TEXT UNIQUE NOT NULL,
+    citizen_id TEXT REFERENCES profiles(id) ON DELETE SET NULL,
+    citizen_name TEXT NOT NULL,
+    citizen_email TEXT NOT NULL,
+    citizen_phone TEXT,
+    title TEXT NOT NULL,
+    department_id TEXT REFERENCES departments(id) ON DELETE RESTRICT,
+    department_name TEXT NOT NULL,
+    priority TEXT NOT NULL CHECK (priority IN ('Low', 'Medium', 'High', 'Urgent')),
+    location TEXT NOT NULL,
+    district TEXT NOT NULL,
+    description TEXT NOT NULL,
+    attachment_url TEXT,
+    status TEXT NOT NULL DEFAULT 'Pending' CHECK (status IN ('Pending', 'In Progress', 'Resolved', 'Rejected')),
+    assigned_official_id TEXT REFERENCES profiles(id) ON DELETE SET NULL,
+    assigned_official_name TEXT,
+    resolution_notes TEXT,
+    resolved_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE grievance_logs (
+    id TEXT PRIMARY KEY,
+    grievance_id TEXT REFERENCES grievances(id) ON DELETE CASCADE,
+    tracking_id TEXT NOT NULL,
+    action TEXT NOT NULL,
+    previous_status TEXT,
+    new_status TEXT,
+    performed_by_name TEXT NOT NULL,
+    performed_by_role TEXT NOT NULL,
+    remarks TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE departments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE grievances ENABLE ROW LEVEL SECURITY;
+ALTER TABLE grievance_logs ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Allow public all on departments" ON departments FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow public all on profiles" ON profiles FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow public all on grievances" ON grievances FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow public all on grievance_logs" ON grievance_logs FOR ALL USING (true) WITH CHECK (true);
+          </pre>
+        </div>
+      </div>
+
+      <div class="bg-slate-50 p-4 border-t border-slate-200 flex justify-between items-center">
+        <button id="retry-supabase-btn" onclick="retrySupabaseConnection()" class="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold rounded-lg transition">
+          Check Connection Again
+        </button>
+        <button onclick="closeSqlModal()" class="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-lg transition">
+          Close
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Toast Container -->
+  <div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col space-y-2 pointer-events-none"></div>
+
+  <!-- App Logic -->
+  <script src="app.js"></script>
+</body>
+</html>
