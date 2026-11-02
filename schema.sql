@@ -143,7 +143,7 @@ INSERT INTO profiles (id, email, password, full_name, phone, role, department_id
 INSERT INTO grievances (id, tracking_id, citizen_id, citizen_name, citizen_email, citizen_phone, title, department_id, department_name, priority, location, district, description, image_url, attachment_url, status, assigned_official_id, assigned_official_name, resolution_notes, resolved_at, created_at, updated_at) VALUES
 (
     'grv_001',
-    'GRV-2026-1001',
+    'GRV-2026-9001',
     'usr_citizen_1',
     'Likith Sai',
     'citizen@civic.gov',
@@ -264,9 +264,9 @@ INSERT INTO grievances (id, tracking_id, citizen_id, citizen_name, citizen_email
 
 -- Seed Logs
 INSERT INTO grievance_logs (id, grievance_id, tracking_id, action, previous_status, new_status, performed_by_name, performed_by_role, remarks, created_at) VALUES
-('log_001', 'grv_001', 'GRV-2026-1001', 'Grievance Registered', NULL, 'Pending', 'Likith Sai', 'Citizen', 'Grievance filed through Citizen Web Portal with location and photographic evidence.', NOW() - INTERVAL '3 days'),
-('log_002', 'grv_001', 'GRV-2026-1001', 'Official Assigned', 'Pending', 'Pending', 'Grievance Secretariat', 'Admin', 'Assigned to Er. Arvind Mehta (Water Supply & Sewage Board).', NOW() - INTERVAL '2 days'),
-('log_003', 'grv_001', 'GRV-2026-1001', 'Status Updated', 'Pending', 'In Progress', 'Er. Arvind Mehta', 'Department Official', 'Inspection complete. Field team deployed with ductile iron pipe segment.', NOW() - INTERVAL '1 day'),
+('log_001', 'grv_001', 'GRV-2026-9001', 'Grievance Registered', NULL, 'Pending', 'Likith Sai', 'Citizen', 'Grievance filed through Citizen Web Portal with location and photographic evidence.', NOW() - INTERVAL '3 days'),
+('log_002', 'grv_001', 'GRV-2026-9001', 'Official Assigned', 'Pending', 'Pending', 'Grievance Secretariat', 'Admin', 'Assigned to Er. Arvind Mehta (Water Supply & Sewage Board).', NOW() - INTERVAL '2 days'),
+('log_003', 'grv_001', 'GRV-2026-9001', 'Status Updated', 'Pending', 'In Progress', 'Er. Arvind Mehta', 'Department Official', 'Inspection complete. Field team deployed with ductile iron pipe segment.', NOW() - INTERVAL '1 day'),
 
 ('log_004', 'grv_002', 'GRV-2026-1002', 'Grievance Registered', NULL, 'Pending', 'Likith Sai', 'Citizen', 'Pothole issue submitted with ward marker and photo.', NOW() - INTERVAL '5 days'),
 ('log_005', 'grv_002', 'GRV-2026-1002', 'Status Updated', 'Pending', 'In Progress', 'Er. Priya Sharma', 'Department Official', 'Emergency asphalt patch work batch approved for immediate night repair.', NOW() - INTERVAL '4 days'),

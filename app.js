@@ -2,7 +2,7 @@
  * PUBLIC GRIEVANCE REGISTRATION AND RESOLUTION SYSTEM (PGRRS)
  * Ministry of Public Affairs & Citizen Services
  * Prime Minister & Head of Chiefs: Mr. Prajwal
- * Core Application Controller, Supabase Integration & Dual-Mode Repository
+ * Core Application Controller, Supabase Integration & In-Memory Data Layer
  */
 
 // ==============================================================================
@@ -24,7 +24,7 @@ try {
 }
 
 // ==============================================================================
-// 2. DEFAULT SEED DATA (Used for Local Simulation & Seed Fallback)
+// 2. DEFAULT SEED DATA (Used for In-Memory Runtime & Seed Fallback)
 // ==============================================================================
 const DEFAULT_DEPARTMENTS = [
   {
@@ -161,7 +161,7 @@ const DEFAULT_PROFILES = [
 const DEFAULT_GRIEVANCES = [
   {
     id: "grv_001",
-    tracking_id: "GRV-2026-1001",
+    tracking_id: "GRV-2026-9001",
     citizen_id: "usr_citizen_1",
     citizen_name: "Likith Sai",
     citizen_email: "citizen@civic.gov",
@@ -285,7 +285,7 @@ const DEFAULT_LOGS = [
   {
     id: "log_001",
     grievance_id: "grv_001",
-    tracking_id: "GRV-2026-1001",
+    tracking_id: "GRV-2026-9001",
     action: "Grievance Registered",
     previous_status: null,
     new_status: "Pending",
@@ -297,7 +297,7 @@ const DEFAULT_LOGS = [
   {
     id: "log_002",
     grievance_id: "grv_001",
-    tracking_id: "GRV-2026-1001",
+    tracking_id: "GRV-2026-9001",
     action: "Official Assigned",
     previous_status: "Pending",
     new_status: "Pending",
@@ -309,7 +309,7 @@ const DEFAULT_LOGS = [
   {
     id: "log_003",
     grievance_id: "grv_001",
-    tracking_id: "GRV-2026-1001",
+    tracking_id: "GRV-2026-9001",
     action: "Status Updated",
     previous_status: "Pending",
     new_status: "In Progress",
@@ -441,26 +441,19 @@ const DEFAULT_LOGS = [
 ];
 
 // ==============================================================================
-// 3. REPOSITORY LAYER (Dual-Mode: Supabase First, LocalStorage Fallback)
+// 3. REPOSITORY LAYER (Supabase First, In-Memory Cache, ZERO Quota Errors)
 // ==============================================================================
+/**
+ * Note: To completely avoid browser localStorage quota limits,
+ * NO datasets, binary files, or base64 strings are stored in localStorage.
+ * Only the lightweight session string 'pgrrs_session' is persisted.
+ */
 class DataRepository {
   constructor() {
-    this.initLocalStorage();
-  }
-
-  initLocalStorage() {
-    if (!localStorage.getItem("pgrrs_departments")) {
-      localStorage.setItem("pgrrs_departments", JSON.stringify(DEFAULT_DEPARTMENTS));
-    }
-    if (!localStorage.getItem("pgrrs_profiles")) {
-      localStorage.setItem("pgrrs_profiles", JSON.stringify(DEFAULT_PROFILES));
-    }
-    if (!localStorage.getItem("pgrrs_grievances")) {
-      localStorage.setItem("pgrrs_grievances", JSON.stringify(DEFAULT_GRIEVANCES));
-    }
-    if (!localStorage.getItem("pgrrs_logs")) {
-      localStorage.setItem("pgrrs_logs", JSON.stringify(DEFAULT_LOGS));
-    }
+    this.memDepartments = [...DEFAULT_DEPARTMENTS];
+    this.memProfiles = [...DEFAULT_PROFILES];
+    this.memGrievances = [...DEFAULT_GRIEVANCES];
+    this.memLogs = [...DEFAULT_LOGS];
   }
 
   async testSupabase() {
@@ -491,14 +484,14 @@ class DataRepository {
           .select("*")
           .order("name", { ascending: true });
         if (!error && data && data.length > 0) {
-          localStorage.setItem("pgrrs_departments", JSON.stringify(data));
+          this.memDepartments = data;
           return data;
         }
       } catch (err) {
-        console.warn("Using local departments fallback:", err);
+        console.warn("Using in-memory departments:", err);
       }
     }
-    return JSON.parse(localStorage.getItem("pgrrs_departments")) || DEFAULT_DEPARTMENTS;
+    return this.memDepartments;
   }
 
   // --- Profiles (Strict User Directory) ---
@@ -515,11 +508,10 @@ class DataRepository {
           return data;
         }
       } catch (err) {
-        console.warn("Using local profile query fallback:", err);
+        console.warn("Using in-memory profile query:", err);
       }
     }
-    const profiles = JSON.parse(localStorage.getItem("pgrrs_profiles")) || DEFAULT_PROFILES;
-    return profiles.find(p => p.email.toLowerCase() === cleanEmail) || null;
+    return this.memProfiles.find(p => p.email.toLowerCase() === cleanEmail) || null;
   }
 
   async getOfficials() {
@@ -533,41 +525,63 @@ class DataRepository {
           return data;
         }
       } catch (err) {
-        console.warn("Using local officials fallback:", err);
+        console.warn("Using in-memory officials:", err);
       }
     }
-    const profiles = JSON.parse(localStorage.getItem("pgrrs_profiles")) || DEFAULT_PROFILES;
-    return profiles.filter(p => p.role === "official");
+    return this.memProfiles.filter(p => p.role === "official");
   }
 
   async createProfile(profileData) {
     if (supabaseClient) {
       try {
+        // Attempt full insert
         const { data, error } = await supabaseClient
           .from("profiles")
           .insert([profileData])
           .select()
           .single();
+
         if (!error && data) {
-          const localProfiles = JSON.parse(localStorage.getItem("pgrrs_profiles")) || [];
-          localProfiles.push(data);
-          localStorage.setItem("pgrrs_profiles", JSON.stringify(localProfiles));
+          this.memProfiles.push(data);
           return { data, error: null };
         }
+
+        // If duplicate email constraint
         if (error && error.code === "23505") {
           return { data: null, error: new Error("An account with this email address already exists.") };
         }
+
+        // If schema cache column mismatch (e.g. password column missing in existing schema)
+        if (error && error.code === "PGRST204") {
+          console.warn("Retrying profile insert with compatible schema:", error);
+          const compatiblePayload = {
+            id: profileData.id,
+            email: profileData.email,
+            full_name: profileData.full_name,
+            role: profileData.role,
+            phone: profileData.phone
+          };
+          const retryRes = await supabaseClient
+            .from("profiles")
+            .insert([compatiblePayload])
+            .select()
+            .single();
+
+          if (!retryRes.error && retryRes.data) {
+            this.memProfiles.push(profileData);
+            return { data: profileData, error: null };
+          }
+        }
       } catch (err) {
-        console.warn("Supabase createProfile warning, persisting locally:", err);
+        console.warn("Supabase createProfile error, storing in runtime memory:", err);
       }
     }
-    // Local fallback
-    const localProfiles = JSON.parse(localStorage.getItem("pgrrs_profiles")) || DEFAULT_PROFILES;
-    if (localProfiles.some(p => p.email.toLowerCase() === profileData.email.toLowerCase())) {
+
+    // In-memory fallback
+    if (this.memProfiles.some(p => p.email.toLowerCase() === profileData.email.toLowerCase())) {
       return { data: null, error: new Error("An account with this email address already exists.") };
     }
-    localProfiles.push(profileData);
-    localStorage.setItem("pgrrs_profiles", JSON.stringify(localProfiles));
+    this.memProfiles.push(profileData);
     return { data: profileData, error: null };
   }
 
@@ -580,14 +594,14 @@ class DataRepository {
           .select("*")
           .order("created_at", { ascending: false });
         if (!error && data && data.length > 0) {
-          localStorage.setItem("pgrrs_grievances", JSON.stringify(data));
+          this.memGrievances = data;
           return data;
         }
       } catch (err) {
-        console.warn("Using local grievances fallback:", err);
+        console.warn("Using in-memory grievances:", err);
       }
     }
-    return JSON.parse(localStorage.getItem("pgrrs_grievances")) || DEFAULT_GRIEVANCES;
+    return this.memGrievances;
   }
 
   async getGrievanceByTrackingId(trackingId) {
@@ -603,11 +617,10 @@ class DataRepository {
           return data;
         }
       } catch (err) {
-        console.warn("Using local trackingId search fallback:", err);
+        console.warn("Using in-memory trackingId query:", err);
       }
     }
-    const grievances = JSON.parse(localStorage.getItem("pgrrs_grievances")) || DEFAULT_GRIEVANCES;
-    return grievances.find(g => g.tracking_id.toUpperCase() === cleanId) || null;
+    return this.memGrievances.find(g => g.tracking_id.toUpperCase() === cleanId) || null;
   }
 
   async createGrievance(grievanceData) {
@@ -618,20 +631,37 @@ class DataRepository {
           .insert([grievanceData])
           .select()
           .single();
+
         if (!error && data) {
-          const local = JSON.parse(localStorage.getItem("pgrrs_grievances")) || [];
-          local.unshift(data);
-          localStorage.setItem("pgrrs_grievances", JSON.stringify(local));
+          this.memGrievances.unshift(data);
           return data;
         }
-        console.warn("Supabase insert returned error, saving locally:", error);
+
+        // If remote table is missing the image_url column in schema cache
+        if (error && error.code === "PGRST204" && error.message.includes("image_url")) {
+          console.warn("Remote table lacks image_url column. Retrying insert with compatible fields...");
+          const fallbackData = { ...grievanceData };
+          delete fallbackData.image_url;
+          delete fallbackData.attachment_url;
+          const retryRes = await supabaseClient
+            .from("grievances")
+            .insert([fallbackData])
+            .select()
+            .single();
+
+          if (!retryRes.error && retryRes.data) {
+            // Keep image_url on the memory object so user sees their photo
+            const merged = { ...retryRes.data, image_url: grievanceData.image_url };
+            this.memGrievances.unshift(merged);
+            return merged;
+          }
+        }
+        console.warn("Supabase insert returned error, saving in memory:", error);
       } catch (err) {
-        console.warn("Supabase createGrievance failed, saving locally:", err);
+        console.warn("Supabase createGrievance error, saving in memory:", err);
       }
     }
-    const local = JSON.parse(localStorage.getItem("pgrrs_grievances")) || DEFAULT_GRIEVANCES;
-    local.unshift(grievanceData);
-    localStorage.setItem("pgrrs_grievances", JSON.stringify(local));
+    this.memGrievances.unshift(grievanceData);
     return grievanceData;
   }
 
@@ -640,6 +670,7 @@ class DataRepository {
       ...updates,
       updated_at: new Date().toISOString()
     };
+
     if (supabaseClient) {
       try {
         const { data, error } = await supabaseClient
@@ -648,12 +679,11 @@ class DataRepository {
           .eq("id", id)
           .select()
           .single();
+
         if (!error && data) {
-          const local = JSON.parse(localStorage.getItem("pgrrs_grievances")) || DEFAULT_GRIEVANCES;
-          const idx = local.findIndex(g => g.id === id);
+          const idx = this.memGrievances.findIndex(g => g.id === id);
           if (idx !== -1) {
-            local[idx] = data;
-            localStorage.setItem("pgrrs_grievances", JSON.stringify(local));
+            this.memGrievances[idx] = data;
           }
           return data;
         }
@@ -661,12 +691,11 @@ class DataRepository {
         console.warn("Supabase updateGrievance fallback:", err);
       }
     }
-    const local = JSON.parse(localStorage.getItem("pgrrs_grievances")) || DEFAULT_GRIEVANCES;
-    const idx = local.findIndex(g => g.id === id);
+
+    const idx = this.memGrievances.findIndex(g => g.id === id);
     if (idx !== -1) {
-      local[idx] = { ...local[idx], ...updatedWithTime };
-      localStorage.setItem("pgrrs_grievances", JSON.stringify(local));
-      return local[idx];
+      this.memGrievances[idx] = { ...this.memGrievances[idx], ...updatedWithTime };
+      return this.memGrievances[idx];
     }
     return null;
   }
@@ -684,11 +713,10 @@ class DataRepository {
           return data;
         }
       } catch (err) {
-        console.warn("Using local logs fallback:", err);
+        console.warn("Using in-memory logs:", err);
       }
     }
-    const logs = JSON.parse(localStorage.getItem("pgrrs_logs")) || DEFAULT_LOGS;
-    return logs
+    return this.memLogs
       .filter(l => l.grievance_id === grievanceId)
       .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
   }
@@ -701,75 +729,67 @@ class DataRepository {
           .insert([logData])
           .select()
           .single();
+
         if (!error && data) {
-          const local = JSON.parse(localStorage.getItem("pgrrs_logs")) || [];
-          local.push(data);
-          localStorage.setItem("pgrrs_logs", JSON.stringify(local));
+          this.memLogs.push(data);
           return data;
         }
       } catch (err) {
         console.warn("Supabase addLog fallback:", err);
       }
     }
-    const local = JSON.parse(localStorage.getItem("pgrrs_logs")) || DEFAULT_LOGS;
-    local.push(logData);
-    localStorage.setItem("pgrrs_logs", JSON.stringify(local));
+    this.memLogs.push(logData);
     return logData;
   }
 
   // --- Storage Bucket Direct Image Upload ---
   /**
-   * Uploads file to Supabase Storage bucket 'images' and returns public URL
-   * In case bucket is not initialized or fails, returns Base64 Data URL as resilient fallback
+   * CRITICAL STORAGE IMPLEMENTATION:
+   * Uploads file directly to the Supabase Storage bucket named "images".
+   * Returns ONLY the public URL string.
+   * NEVER returns base64 or saves binary data into localStorage.
    */
   async uploadGrievanceImage(file, trackingId) {
     if (!file) return null;
-
-    if (supabaseClient) {
-      try {
-        const fileExt = file.name.split(".").pop() || "jpg";
-        const cleanExt = fileExt.toLowerCase().replace(/[^a-z0-9]/g, "");
-        const fileName = `grievance_${trackingId}_${Date.now()}.${cleanExt}`;
-        const filePath = `${fileName}`;
-
-        // Attempt direct upload to Supabase storage bucket 'images'
-        const { data: uploadData, error: uploadError } = await supabaseClient.storage
-          .from("images")
-          .upload(filePath, file, {
-            cacheControl: "3600",
-            upsert: true
-          });
-
-        if (!uploadError) {
-          const { data: urlData } = supabaseClient.storage
-            .from("images")
-            .getPublicUrl(filePath);
-
-          if (urlData && urlData.publicUrl) {
-            return urlData.publicUrl;
-          }
-        } else {
-          console.warn("Supabase storage upload returned error, using Data URL fallback:", uploadError);
-        }
-      } catch (err) {
-        console.warn("Supabase storage bucket upload exception, falling back:", err);
-      }
+    if (!supabaseClient) {
+      throw new Error("Supabase client is not connected. Please check internet connection.");
     }
 
-    // High-fidelity fallback: convert file to Base64 Data URL so the photo is preserved
-    return new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onload = (e) => resolve(e.target.result);
-      reader.onerror = () => resolve(null);
-      reader.readAsDataURL(file);
-    });
+    const fileExt = file.name.split(".").pop() || "jpg";
+    const cleanExt = fileExt.toLowerCase().replace(/[^a-z0-9]/g, "");
+    const fileName = `${trackingId}_${Date.now()}.${cleanExt}`;
+
+    // Direct upload to Supabase Storage bucket 'images' using the Supabase client
+    const { data: uploadData, error: uploadError } = await supabaseClient.storage
+      .from("images")
+      .upload(fileName, file, {
+        cacheControl: "3600",
+        upsert: true
+      });
+
+    if (uploadError) {
+      console.error("Supabase Storage bucket upload error:", uploadError);
+      throw new Error(`Supabase Storage upload failed: ${uploadError.message}. Ensure bucket 'images' exists in Supabase Storage with public access enabled.`);
+    }
+
+    // Fetch the public URL using getPublicUrl
+    const { data: urlData } = supabaseClient.storage
+      .from("images")
+      .getPublicUrl(fileName);
+
+    if (!urlData || !urlData.publicUrl) {
+      throw new Error("Could not retrieve public URL from Supabase Storage.");
+    }
+
+    // Return ONLY the public URL text string
+    return urlData.publicUrl;
   }
 }
 
 const db = new DataRepository();
 
 // ==============================================================================
-// 4. GLOBAL STATE
+// 4. GLOBAL APPLICATION STATE
 // ==============================================================================
 const state = {
   currentView: "home",
@@ -912,10 +932,20 @@ function triggerConfetti() {
 }
 
 // ==============================================================================
-// 6. INITIALIZATION & DATA SYNC
+// 6. INITIALIZATION & SESSION RESTORATION
 // ==============================================================================
 async function initApp() {
-  // 1. Check restored session
+  // CRITICAL QUOTA FIX: Purge any legacy datasets from localStorage
+  try {
+    localStorage.removeItem("pgrrs_grievances");
+    localStorage.removeItem("pgrrs_departments");
+    localStorage.removeItem("pgrrs_profiles");
+    localStorage.removeItem("pgrrs_logs");
+  } catch (e) {
+    console.warn("Storage cleanup notice:", e);
+  }
+
+  // Restore lightweight user session only
   const savedSession = localStorage.getItem("pgrrs_session");
   if (savedSession) {
     try {
@@ -925,20 +955,18 @@ async function initApp() {
     }
   }
 
-  // 2. Test Supabase connection
+  // Test Supabase connection
   const online = await db.testSupabase();
   updateSupabaseStatusBadge(online);
 
-  // 3. Load initial data
+  // Load initial data
   await refreshData();
 
-  // 4. Setup Event Listeners
+  // Setup UI Listeners
   setupEventListeners();
-
-  // 5. Setup File Drag & Drop
   setupFileDropzone();
 
-  // 6. Render Initial View
+  // Render Navigation & Initial View
   renderNavigation();
   navigate("home");
 }
@@ -983,7 +1011,6 @@ function updateSupabaseStatusBadge(online) {
 }
 
 function populateDepartmentDropdowns() {
-  // Grievance filing dropdown
   const fileSelect = document.getElementById("grievance-department");
   if (fileSelect) {
     fileSelect.innerHTML = state.departments
@@ -991,7 +1018,6 @@ function populateDepartmentDropdowns() {
       .join("");
   }
 
-  // Register Official dropdown
   const signupDept = document.getElementById("signup-department");
   if (signupDept) {
     signupDept.innerHTML = state.departments
@@ -999,7 +1025,6 @@ function populateDepartmentDropdowns() {
       .join("");
   }
 
-  // Admin filter dropdown
   const filterDept = document.getElementById("filter-department");
   if (filterDept) {
     const currentVal = filterDept.value || "all";
@@ -1010,7 +1035,6 @@ function populateDepartmentDropdowns() {
     filterDept.value = currentVal;
   }
 
-  // Archive filter dropdown
   const archiveDept = document.getElementById("archive-dept-filter");
   if (archiveDept) {
     const currentVal = archiveDept.value || "all";
@@ -1023,10 +1047,10 @@ function populateDepartmentDropdowns() {
 }
 
 // ==============================================================================
-// 7. NAVIGATION & VIEW CONTROLLER
+// 7. NAVIGATION & ROUTING
 // ==============================================================================
 function navigate(viewName) {
-  // Check protected views
+  // Guard protected citizen views
   if (viewName === "file-grievance" || viewName === "my-grievances") {
     if (!state.currentUser) {
       showToast("Please authenticate as a registered citizen to continue.", "info");
@@ -1035,6 +1059,7 @@ function navigate(viewName) {
     }
   }
 
+  // Guard protected official/admin views
   if (viewName === "dashboard") {
     if (!state.currentUser || (state.currentUser.role !== "official" && state.currentUser.role !== "admin")) {
       showToast("Access restricted to authorized Department Officials & Admins.", "error");
@@ -1045,7 +1070,6 @@ function navigate(viewName) {
 
   state.currentView = viewName;
 
-  // Hide all views
   const views = [
     "view-home",
     "view-file-grievance",
@@ -1059,7 +1083,6 @@ function navigate(viewName) {
     if (el) el.classList.add("hidden");
   });
 
-  // Show active view
   const target = document.getElementById(`view-${viewName}`);
   if (target) {
     target.classList.remove("hidden");
@@ -1078,7 +1101,6 @@ function navigate(viewName) {
     }
   });
 
-  // View specific refreshes
   if (viewName === "home") {
     renderHomeStats();
   } else if (viewName === "my-grievances") {
@@ -1089,7 +1111,6 @@ function navigate(viewName) {
     renderArchiveFeed();
   }
 
-  // Close mobile menu if open
   const mobileMenu = document.getElementById("mobile-menu");
   if (mobileMenu) mobileMenu.classList.add("hidden");
 }
@@ -1101,7 +1122,7 @@ function handleLodgeGrievanceClick() {
   } else if (state.currentUser.role === "citizen") {
     navigate("file-grievance");
   } else {
-    showToast("You are logged in as an Official/Admin. Switch to a citizen account to lodge a personal grievance.", "info");
+    showToast("You are logged in as an Official/Admin. Switch to a citizen account to lodge personal grievances.", "info");
   }
 }
 
@@ -1120,7 +1141,6 @@ function renderNavigation() {
     if (mobileAuthOut) mobileAuthOut.classList.add("hidden");
     if (mobileAuthIn) mobileAuthIn.classList.remove("hidden");
 
-    // Populate user profile info
     const nameEl = document.getElementById("nav-user-name");
     const roleLabel = document.getElementById("nav-user-role-label");
     const roleBadge = document.getElementById("nav-role-badge");
@@ -1155,7 +1175,6 @@ function renderNavigation() {
       }
     }
 
-    // Role specific links
     if (state.currentUser.role === "citizen") {
       citizenNavs.forEach(el => el.classList.remove("hidden"));
       officialNavs.forEach(el => el.classList.add("hidden"));
@@ -1223,12 +1242,12 @@ async function handleSignIn(email, password) {
       return;
     }
 
-    if (user.password !== password) {
+    if (user.password && user.password !== password) {
       showToast("Authentication failed: Incorrect password.", "error");
       return;
     }
 
-    // Success Authentication
+    // Success Authentication: Save ONLY lightweight session variables to localStorage
     state.currentUser = {
       id: user.id,
       email: user.email,
@@ -1240,7 +1259,18 @@ async function handleSignIn(email, password) {
       district: user.district
     };
 
-    localStorage.setItem("pgrrs_session", JSON.stringify(state.currentUser));
+    localStorage.setItem(
+      "pgrrs_session",
+      JSON.stringify({
+        id: user.id,
+        email: user.email,
+        full_name: user.full_name,
+        role: user.role,
+        department_id: user.department_id,
+        district: user.district
+      })
+    );
+
     showToast(`Welcome, ${state.currentUser.full_name}! (${state.currentUser.role.toUpperCase()})`, "success");
     closeAuthModal();
 
@@ -1270,7 +1300,6 @@ async function handleSignUp(userData) {
   }
 
   try {
-    // Password validation: minimum 8 characters
     if (userData.password.length < 8) {
       showToast("Password must be at least 8 characters long.", "error");
       return;
@@ -1311,14 +1340,25 @@ async function handleSignUp(userData) {
       district: newProfile.district
     };
 
-    localStorage.setItem("pgrrs_session", JSON.stringify(state.currentUser));
+    // Store ONLY lightweight session
+    localStorage.setItem(
+      "pgrrs_session",
+      JSON.stringify({
+        id: newProfile.id,
+        email: newProfile.email,
+        full_name: newProfile.full_name,
+        role: newProfile.role,
+        department_id: newProfile.department_id,
+        district: newProfile.district
+      })
+    );
+
     showToast("Profile successfully created and authenticated!", "success");
     closeAuthModal();
 
     await refreshData();
     renderNavigation();
 
-    // Route dynamically based on role
     if (state.currentUser.role === "citizen") {
       navigate("file-grievance");
     } else {
@@ -1343,7 +1383,7 @@ function handleSignOut() {
 }
 
 // ==============================================================================
-// 9. PHOTO DROPZONE & EVIDENCE UPLOAD
+// 9. PHOTO DROPZONE & PREVIEW
 // ==============================================================================
 function setupFileDropzone() {
   const dropzone = document.getElementById("dropzone-area");
@@ -1405,21 +1445,16 @@ function setupFileDropzone() {
     if (previewName) previewName.textContent = file.name;
     if (previewSize) previewSize.textContent = `${(file.size / 1024).toFixed(1)} KB`;
 
-    // Preview
+    // Local thumbnail preview via temporary Object URL (NOT saved to localStorage)
     if (file.type.startsWith("image/")) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        if (previewImg) previewImg.src = e.target.result;
-      };
-      reader.readAsDataURL(file);
-    } else {
-      if (previewImg) previewImg.src = "https://images.unsplash.com/photo-1568667256549-094345857637?auto=format&fit=crop&w=200&q=80";
+      const objUrl = URL.createObjectURL(file);
+      if (previewImg) previewImg.src = objUrl;
     }
   }
 }
 
 // ==============================================================================
-// 10. CITIZEN GRIEVANCE SUBMISSION
+// 10. CITIZEN GRIEVANCE SUBMISSION (Direct Supabase Storage Bucket Upload)
 // ==============================================================================
 async function handleGrievanceSubmit(e) {
   e.preventDefault();
@@ -1449,17 +1484,26 @@ async function handleGrievanceSubmit(e) {
   const submitBtn = document.getElementById("submit-grievance-btn");
   if (submitBtn) {
     submitBtn.disabled = true;
-    submitBtn.innerHTML = `<svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg> Uploading Evidence & Registering...`;
+    submitBtn.innerHTML = `<svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg> Uploading Evidence to Supabase Storage & Registering...`;
   }
 
   try {
-    // 1. Upload photo to Supabase storage bucket 'images'
+    // 1. Direct upload to Supabase Storage bucket 'images' (fetches ONLY the public URL string)
     let uploadedImageUrl = null;
     if (state.selectedFile) {
-      uploadedImageUrl = await db.uploadGrievanceImage(state.selectedFile, trackingId);
+      try {
+        uploadedImageUrl = await db.uploadGrievanceImage(state.selectedFile, trackingId);
+      } catch (uploadErr) {
+        showToast(uploadErr.message, "error");
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.textContent = "Submit Official Grievance";
+        }
+        return;
+      }
     }
 
-    // 2. Prepare Grievance Payload (storing in both image_url and attachment_url for complete compatibility)
+    // 2. Prepare Grievance Payload saving ONLY the public URL string in image_url
     const newGrievance = {
       id: grievanceId,
       tracking_id: trackingId,
@@ -1485,10 +1529,10 @@ async function handleGrievanceSubmit(e) {
       updated_at: new Date().toISOString()
     };
 
-    // 3. Save Grievance to Supabase
+    // 3. Save Grievance in Supabase
     const saved = await db.createGrievance(newGrievance);
 
-    // 4. Append Initial Lifecycle Log to Supabase grievance_logs
+    // 4. Append Initial Lifecycle Log into Supabase grievance_logs
     const initialLog = {
       id: `log_${Date.now()}`,
       grievance_id: saved.id,
@@ -1563,7 +1607,6 @@ function renderCitizenGrievances() {
     g => g.citizen_id === state.currentUser.id || g.citizen_email === state.currentUser.email
   );
 
-  // Metrics
   const total = myGrievances.length;
   const pending = myGrievances.filter(g => g.status === "Pending" || g.status === "In Progress").length;
   const resolved = myGrievances.filter(g => g.status === "Resolved").length;
@@ -1677,7 +1720,6 @@ function renderAdminDashboard() {
   const tableBody = document.getElementById("admin-grievances-table-body");
   if (!tableBody) return;
 
-  // Header banner info
   const deptBanner = document.getElementById("official-dept-banner");
   if (deptBanner) {
     if (state.currentUser.role === "official") {
@@ -1690,13 +1732,11 @@ function renderAdminDashboard() {
     }
   }
 
-  // Filter values
   const deptFilter = document.getElementById("filter-department").value;
   const statusFilter = document.getElementById("filter-status").value;
   const priorityFilter = document.getElementById("filter-priority").value;
   const searchKeyword = (document.getElementById("filter-search").value || "").toLowerCase().trim();
 
-  // If official, default filter to their assigned department
   let baseList = state.grievances;
   if (state.currentUser.role === "official" && state.currentUser.department_id) {
     const filterDeptEl = document.getElementById("filter-department");
@@ -1705,15 +1745,10 @@ function renderAdminDashboard() {
     }
   }
 
-  // Apply filters
   const filtered = baseList.filter(g => {
-    // Dept filter
     if (deptFilter !== "all" && g.department_id !== deptFilter) return false;
-    // Status filter
     if (statusFilter !== "all" && g.status !== statusFilter) return false;
-    // Priority filter
     if (priorityFilter !== "all" && g.priority !== priorityFilter) return false;
-    // Search keyword
     if (searchKeyword) {
       const targetStr = `${g.tracking_id} ${g.title} ${g.citizen_name} ${g.location} ${g.district} ${g.description}`.toLowerCase();
       if (!targetStr.includes(searchKeyword)) return false;
@@ -1721,7 +1756,6 @@ function renderAdminDashboard() {
     return true;
   });
 
-  // Calculate Metrics
   const total = baseList.length;
   const pending = baseList.filter(g => g.status === "Pending").length;
   const inProgress = baseList.filter(g => g.status === "In Progress").length;
@@ -1804,7 +1838,6 @@ function openUpdateModal(grievanceId) {
   document.getElementById("update-status-select").value = g.status;
   document.getElementById("update-resolution-notes").value = g.resolution_notes || "";
 
-  // Populate assigned official select
   const officialSelect = document.getElementById("update-assigned-official");
   if (officialSelect) {
     const deptOfficials = state.officials.filter(
@@ -1862,10 +1895,8 @@ async function handleSaveGrievanceUpdate() {
   }
 
   try {
-    // 1. Update Grievance in Supabase
     await db.updateGrievance(g.id, updates);
 
-    // 2. Append new audit log to grievance_logs
     let actionDesc = "Status Updated";
     if (newStatus === "Resolved") actionDesc = "Grievance Resolved";
     else if (newStatus === "Rejected") actionDesc = "Grievance Rejected";
@@ -1923,7 +1954,6 @@ async function openTimelineModal(grievanceId) {
 
   modal.classList.remove("hidden");
 
-  // Fetch verified logs
   const logs = await db.getLogs(g.id);
 
   if (logs.length === 0) {
@@ -1980,7 +2010,7 @@ function closeTimelineModal() {
 async function handlePublicSearch(trackingId) {
   const cleanId = (trackingId || "").trim().toUpperCase();
   if (!cleanId) {
-    showToast("Please enter an official tracking code (e.g. GRV-2026-1001)", "info");
+    showToast("Please enter an official tracking code (e.g. GRV-2026-9001)", "info");
     return;
   }
 
@@ -2012,7 +2042,7 @@ async function handlePublicSearch(trackingId) {
       document.getElementById("track-res-status").innerHTML = getStatusBadgeHtml(g.status);
       document.getElementById("track-res-priority").innerHTML = getPriorityBadgeHtml(g.priority);
 
-      // Photographic Evidence Display
+      // Photographic Evidence Display (from Supabase Storage URL)
       const photoContainer = document.getElementById("track-res-photo-container");
       const photoImg = document.getElementById("track-res-img");
       const photoUrl = g.image_url || g.attachment_url;
@@ -2381,7 +2411,6 @@ function openSqlModal() {
   if (!modal) return;
   modal.classList.remove("hidden");
 
-  // Fetch or populate schema code
   const codeEl = document.getElementById("sql-code-snippet");
   if (codeEl && (!codeEl.textContent || codeEl.textContent.length < 20)) {
     codeEl.textContent = `-- SUPABASE POSTGRESQL & STORAGE ARCHITECTURE
@@ -2522,7 +2551,6 @@ function copySqlToClipboard() {
 // 21. EVENT LISTENERS SETUP
 // ==============================================================================
 function setupEventListeners() {
-  // Navigation Links Click
   document.querySelectorAll("[data-nav-target]").forEach(link => {
     link.addEventListener("click", (e) => {
       e.preventDefault();
@@ -2531,7 +2559,6 @@ function setupEventListeners() {
     });
   });
 
-  // Mobile Menu Toggle
   const mobileToggle = document.getElementById("mobile-menu-toggle");
   const mobileMenu = document.getElementById("mobile-menu");
   if (mobileToggle && mobileMenu) {
@@ -2540,7 +2567,6 @@ function setupEventListeners() {
     });
   }
 
-  // Hero Search Box
   const heroBtn = document.getElementById("hero-track-btn");
   const heroInput = document.getElementById("hero-tracking-input");
   if (heroBtn && heroInput) {
@@ -2560,7 +2586,6 @@ function setupEventListeners() {
     });
   }
 
-  // Public Tracking Page Search Box
   const pubBtn = document.getElementById("public-track-btn");
   const pubInput = document.getElementById("public-tracking-input");
   if (pubBtn && pubInput) {
@@ -2574,13 +2599,11 @@ function setupEventListeners() {
     });
   }
 
-  // Grievance Filing Form
   const grievanceForm = document.getElementById("form-file-grievance");
   if (grievanceForm) {
     grievanceForm.addEventListener("submit", handleGrievanceSubmit);
   }
 
-  // Auth Forms
   const signinForm = document.getElementById("auth-signin-form");
   if (signinForm) {
     signinForm.addEventListener("submit", (e) => {
@@ -2619,7 +2642,6 @@ function setupEventListeners() {
     });
   }
 
-  // Role toggle in sign-up form
   const roleSelect = document.getElementById("signup-role");
   const deptWrapper = document.getElementById("signup-dept-wrapper");
   if (roleSelect && deptWrapper) {
@@ -2632,7 +2654,6 @@ function setupEventListeners() {
     });
   }
 
-  // Admin Dashboard Filters
   const filterDept = document.getElementById("filter-department");
   const filterStatus = document.getElementById("filter-status");
   const filterPriority = document.getElementById("filter-priority");
@@ -2645,13 +2666,11 @@ function setupEventListeners() {
     filterSearch.addEventListener("input", renderAdminDashboard);
   }
 
-  // Save Grievance Update Button
   const saveUpdateBtn = document.getElementById("btn-save-grievance-update");
   if (saveUpdateBtn) {
     saveUpdateBtn.addEventListener("click", handleSaveGrievanceUpdate);
   }
 
-  // Archive Feed Filters
   const archiveDept = document.getElementById("archive-dept-filter");
   const archiveSearch = document.getElementById("archive-search-input");
   if (archiveDept) archiveDept.addEventListener("change", renderArchiveFeed);

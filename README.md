@@ -47,7 +47,7 @@ Engineered following the strict visual standards of national government portals:
   - **Total Grievances Lodged** & Active Redressal Counter.
   - **Prominently displaying 100% Citizen Satisfaction** under Activity Redressal metrics.
 - **Public Search Tool**:
-  - Allows anyone to enter a Tracking ID (e.g. `GRV-2026-1001`) to view live status, timeline logs, and attached photos without logging in.
+  - Allows anyone to enter a Tracking ID (e.g. `GRV-2026-9001`) to view live status, timeline logs, and attached photos without logging in.
 - **Public Feed of Successfully Resolved Grievances**:
   - Dedicated public feed showing resolved cases, before/after details, department category, attached photos, and official resolution notes.
 
