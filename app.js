@@ -1,6 +1,8 @@
 /**
  * PUBLIC GRIEVANCE REGISTRATION AND RESOLUTION SYSTEM (PGRRS)
- * Core Application Logic, Supabase Integration, Local State & UI Controller
+ * Ministry of Public Affairs & Citizen Services
+ * Prime Minister & Head of Chiefs: Mr. Prajwal
+ * Core Application Controller, Supabase Integration & Dual-Mode Repository
  */
 
 // ==============================================================================
@@ -18,7 +20,7 @@ try {
     supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   }
 } catch (err) {
-  console.warn("Supabase initialization warning:", err);
+  console.warn("Supabase client initialization warning:", err);
 }
 
 // ==============================================================================
@@ -29,49 +31,55 @@ const DEFAULT_DEPARTMENTS = [
     id: "dept_water",
     name: "Water Supply & Sewage Board",
     code: "WATER",
-    description: "Potable water pipelines, drainage maintenance, sewage blockages, water quality",
+    description: "Potable water pipelines, sewage blockages, municipal drainage & water quality testing",
     head_official: "Er. Arvind Mehta",
-    icon: "droplet"
+    icon: "droplet",
+    sla_hours: 24
   },
   {
     id: "dept_roads",
     name: "Public Works & Road Infrastructure",
     code: "ROADS",
-    description: "Pothole repair, road carpeting, footpaths, bridges, drainage channels",
+    description: "Pothole restoration, highway carpeting, bridge safety, storm drains & sidewalk paving",
     head_official: "Er. Priya Sharma",
-    icon: "car"
+    icon: "car",
+    sla_hours: 48
   },
   {
     id: "dept_elec",
     name: "Electricity & Power Distribution",
     code: "ELEC",
-    description: "Power outages, hazardous wiring, transformer failure, streetlight repairs",
+    description: "Power breakdown, hazardous transformer sparking, live wires & streetlight maintenance",
     head_official: "Er. Rajesh Verma",
-    icon: "zap"
+    icon: "zap",
+    sla_hours: 12
   },
   {
     id: "dept_waste",
     name: "Municipal Solid Waste Management",
     code: "WASTE",
-    description: "Garbage collection, community dumpsters, sanitation drives, debris disposal",
+    description: "Garbage collection, community dumpster hygiene, bio-waste disposal & sanitation drives",
     head_official: "Dr. S. K. Nambiar",
-    icon: "trash-2"
+    icon: "trash-2",
+    sla_hours: 24
   },
   {
     id: "dept_health",
     name: "Public Health & Healthcare Services",
     code: "HEALTH",
-    description: "Civic clinics, vector-borne disease control, sanitation inspection, food hygiene",
+    description: "Civic clinics, vector epidemic control, sanitation compliance & food safety inspection",
     head_official: "Dr. Ananya Roy",
-    icon: "activity"
+    icon: "activity",
+    sla_hours: 24
   },
   {
     id: "dept_police",
     name: "Traffic & Law Enforcement",
     code: "POLICE",
-    description: "Traffic signal management, illegal parking, civic encroachment, public nuisance",
+    description: "Traffic signal management, illegal commercial parking, encroachment & emergency lane clearance",
     head_official: "Insp. Vikram Singh",
-    icon: "shield"
+    icon: "shield",
+    sla_hours: 24
   }
 ];
 
@@ -79,66 +87,72 @@ const DEFAULT_PROFILES = [
   {
     id: "usr_citizen_1",
     email: "citizen@civic.gov",
-    password: "Citizen123!",
+    password: "CitizenSecure#2026",
     full_name: "Likith Sai",
     phone: "+91 98765 43210",
     role: "citizen",
     department_id: null,
+    official_designation: null,
     district: "Central District",
     created_at: new Date(Date.now() - 7 * 86400000).toISOString()
   },
   {
     id: "usr_citizen_2",
     email: "aarti.sharma@example.com",
-    password: "Citizen123!",
+    password: "CitizenSecure#2026",
     full_name: "Aarti Sharma",
     phone: "+91 98765 11223",
     role: "citizen",
     department_id: null,
+    official_designation: null,
     district: "North Ward",
     created_at: new Date(Date.now() - 10 * 86400000).toISOString()
   },
   {
     id: "usr_official_water",
     email: "official.water@civic.gov",
-    password: "Official123!",
+    password: "GovOfficial#2026",
     full_name: "Er. Arvind Mehta",
     phone: "+91 91234 56789",
     role: "official",
     department_id: "dept_water",
+    official_designation: "Superintending Engineer",
     district: "Central District",
     created_at: new Date(Date.now() - 30 * 86400000).toISOString()
   },
   {
     id: "usr_official_roads",
     email: "official.roads@civic.gov",
-    password: "Official123!",
+    password: "GovOfficial#2026",
     full_name: "Er. Priya Sharma",
     phone: "+91 91234 98765",
     role: "official",
     department_id: "dept_roads",
+    official_designation: "Executive Engineer (PWD)",
     district: "South Ward",
     created_at: new Date(Date.now() - 30 * 86400000).toISOString()
   },
   {
     id: "usr_official_elec",
     email: "official.elec@civic.gov",
-    password: "Official123!",
+    password: "GovOfficial#2026",
     full_name: "Er. Rajesh Verma",
     phone: "+91 91234 44556",
     role: "official",
     department_id: "dept_elec",
+    official_designation: "Chief Electrical Inspector",
     district: "East Ward",
     created_at: new Date(Date.now() - 30 * 86400000).toISOString()
   },
   {
     id: "usr_admin_1",
     email: "admin@civic.gov",
-    password: "Admin123!",
-    full_name: "Dr. K. S. Murthy (Director)",
+    password: "Secretariat#2026",
+    full_name: "Dr. K. S. Murthy",
     phone: "+91 99999 88888",
     role: "admin",
     department_id: null,
+    official_designation: "Chief Director, Grievance Secretariat",
     district: "Apex Secretariat",
     created_at: new Date(Date.now() - 60 * 86400000).toISOString()
   }
@@ -159,11 +173,12 @@ const DEFAULT_GRIEVANCES = [
     location: "Opposite City Library, 4th Cross Road, Ward 12",
     district: "Central District",
     description: "Main supply pipeline has ruptured causing massive potable water loss and road flooding for the last 2 days. Commuters unable to use sidewalk.",
-    attachment_url: "https://images.unsplash.com/photo-1541888946425-d0fbb1861593?auto=format&fit=crop&w=400&q=80",
+    image_url: "https://images.unsplash.com/photo-1541888946425-d0fbb1861593?auto=format&fit=crop&w=800&q=80",
+    attachment_url: "https://images.unsplash.com/photo-1541888946425-d0fbb1861593?auto=format&fit=crop&w=800&q=80",
     status: "In Progress",
     assigned_official_id: "usr_official_water",
     assigned_official_name: "Er. Arvind Mehta",
-    resolution_notes: "Field repair crew dispatched with heavy excavation gear. Pipeline section replacement underway.",
+    resolution_notes: "Field repair crew dispatched with heavy excavation gear. Replacement ductile iron pipeline segment installation underway.",
     resolved_at: null,
     created_at: new Date(Date.now() - 3 * 86400000).toISOString(),
     updated_at: new Date(Date.now() - 1 * 86400000).toISOString()
@@ -175,18 +190,19 @@ const DEFAULT_GRIEVANCES = [
     citizen_name: "Likith Sai",
     citizen_email: "citizen@civic.gov",
     citizen_phone: "+91 98765 43210",
-    title: "Deep Hazardous Potholes on Main Bus Route",
+    title: "Deep Hazardous Potholes on Main Bus Transit Route",
     department_id: "dept_roads",
     department_name: "Public Works & Road Infrastructure",
     priority: "High",
-    location: "Between Metro Pillar 140 to 148, Ring Road",
+    location: "Between Metro Pillar 140 to 148, Outer Ring Road",
     district: "Central District",
-    description: "Multiple deep potholes spanning 200 meters. Caused 2 two-wheeler skids yesterday. High hazard during night transit.",
-    attachment_url: "https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?auto=format&fit=crop&w=400&q=80",
+    description: "Multiple deep potholes spanning 200 meters. Caused 2 two-wheeler skids yesterday. High safety hazard during evening peak transit.",
+    image_url: "https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?auto=format&fit=crop&w=800&q=80",
+    attachment_url: "https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?auto=format&fit=crop&w=800&q=80",
     status: "Resolved",
     assigned_official_id: "usr_official_roads",
     assigned_official_name: "Er. Priya Sharma",
-    resolution_notes: "Emergency cold-mix asphalt patch work completed. Bitumen overlay leveled and inspected.",
+    resolution_notes: "Emergency cold-mix asphalt patch work and heavy bitumen overlay completed. Surface tested and cleared by Junior Engineer on duty.",
     resolved_at: new Date(Date.now() - 6 * 3600000).toISOString(),
     created_at: new Date(Date.now() - 5 * 86400000).toISOString(),
     updated_at: new Date(Date.now() - 6 * 3600000).toISOString()
@@ -198,21 +214,22 @@ const DEFAULT_GRIEVANCES = [
     citizen_name: "Aarti Sharma",
     citizen_email: "aarti.sharma@example.com",
     citizen_phone: "+91 98765 11223",
-    title: "High Voltage Streetlight Pole Sparking",
+    title: "High Voltage Streetlight Pole Sparking Dangerously",
     department_id: "dept_elec",
     department_name: "Electricity & Power Distribution",
     priority: "Urgent",
-    location: "Near Community Health Center, North Gate",
+    location: "Near Community Health Center, North Gate Junction",
     district: "North Ward",
-    description: "Streetlight pole #NL-44 has loose dangling live wires that emit loud sparks whenever it rains. Direct threat to school children walking by.",
-    attachment_url: null,
+    description: "Streetlight pole #NL-44 has loose dangling live wires that emit loud sparks whenever wind blows. Direct threat to school children and patients.",
+    image_url: "https://images.unsplash.com/photo-1509390144018-eeaf65052242?auto=format&fit=crop&w=800&q=80",
+    attachment_url: "https://images.unsplash.com/photo-1509390144018-eeaf65052242?auto=format&fit=crop&w=800&q=80",
     status: "Pending",
     assigned_official_id: null,
     assigned_official_name: null,
     resolution_notes: null,
     resolved_at: null,
-    created_at: new Date(Date.now() - 12 * 3600000).toISOString(),
-    updated_at: new Date(Date.now() - 12 * 3600000).toISOString()
+    created_at: new Date(Date.now() - 14 * 3600000).toISOString(),
+    updated_at: new Date(Date.now() - 14 * 3600000).toISOString()
   },
   {
     id: "grv_004",
@@ -221,21 +238,22 @@ const DEFAULT_GRIEVANCES = [
     citizen_name: "Aarti Sharma",
     citizen_email: "aarti.sharma@example.com",
     citizen_phone: "+91 98765 11223",
-    title: "Garbage Dump Overflowing and Stray Cattle Nuisance",
+    title: "Sanitation Bin Overflowing & Foul Odor Near School",
     department_id: "dept_waste",
     department_name: "Municipal Solid Waste Management",
     priority: "Medium",
     location: "Market Square, Corner of Vegetable Yard",
     district: "North Ward",
-    description: "Community bin has not been cleared for 4 consecutive days. Debris spilled across 50 meters attracting flies and foul smell.",
-    attachment_url: null,
-    status: "In Progress",
+    description: "Community bin has not been cleared for 4 consecutive days. Debris spilled across 50 meters attracting stray animals and severe pest infestation.",
+    image_url: "https://images.unsplash.com/photo-1532996122724-e3c354a0b15b?auto=format&fit=crop&w=800&q=80",
+    attachment_url: "https://images.unsplash.com/photo-1532996122724-e3c354a0b15b?auto=format&fit=crop&w=800&q=80",
+    status: "Resolved",
     assigned_official_id: null,
     assigned_official_name: "Dr. S. K. Nambiar",
-    resolution_notes: "Sanitation compactor scheduled for 6:00 AM route tomorrow with bleaching powder sanitization.",
-    resolved_at: null,
+    resolution_notes: "Sanitation compactor squad cleared 4 metric tons of accumulated refuse. Area disinfected with high-grade bleaching powder and scheduled for daily 6 AM sweep.",
+    resolved_at: new Date(Date.now() - 4 * 3600000).toISOString(),
     created_at: new Date(Date.now() - 2 * 86400000).toISOString(),
-    updated_at: new Date(Date.now() - 18 * 3600000).toISOString()
+    updated_at: new Date(Date.now() - 4 * 3600000).toISOString()
   },
   {
     id: "grv_005",
@@ -244,21 +262,22 @@ const DEFAULT_GRIEVANCES = [
     citizen_name: "Likith Sai",
     citizen_email: "citizen@civic.gov",
     citizen_phone: "+91 98765 43210",
-    title: "Illegal Commercial Vehicle Parking Blocking Fire Hydrant",
+    title: "Illegal Commercial Trucks Blocking Fire Hydrant Access",
     department_id: "dept_police",
     department_name: "Traffic & Law Enforcement",
     priority: "Low",
-    location: "Old Grain Market Alley #3",
+    location: "Old Grain Market Alley #3, Sector 5",
     district: "Central District",
-    description: "Private logistics trucks parked permanently over marked fire hydrant zones and obstructing emergency vehicle access.",
-    attachment_url: null,
+    description: "Private transport logistics vehicles parked permanently across marked fire hydrant access zones, creating severe fire hazard.",
+    image_url: "https://images.unsplash.com/photo-1508974239320-0a029497e820?auto=format&fit=crop&w=800&q=80",
+    attachment_url: "https://images.unsplash.com/photo-1508974239320-0a029497e820?auto=format&fit=crop&w=800&q=80",
     status: "Resolved",
     assigned_official_id: null,
     assigned_official_name: "Insp. Vikram Singh",
-    resolution_notes: "Traffic towing squad deployed. Fines issued to 4 offending vehicle owners. Hydrant cleared and no-parking warning sign board reinstalled.",
-    resolved_at: new Date(Date.now() - 24 * 3600000).toISOString(),
+    resolution_notes: "Traffic squad deployed heavy hydraulic tow trucks. Vehicles removed to impound lot, penalty challans issued, and yellow cautionary bollards installed.",
+    resolved_at: new Date(Date.now() - 1 * 86400000).toISOString(),
     created_at: new Date(Date.now() - 7 * 86400000).toISOString(),
-    updated_at: new Date(Date.now() - 24 * 3600000).toISOString()
+    updated_at: new Date(Date.now() - 1 * 86400000).toISOString()
   }
 ];
 
@@ -272,7 +291,7 @@ const DEFAULT_LOGS = [
     new_status: "Pending",
     performed_by_name: "Likith Sai",
     performed_by_role: "Citizen",
-    remarks: "Grievance filed through Citizen Web Portal with location details.",
+    remarks: "Grievance officially lodged through citizen self-service portal with photo evidence.",
     created_at: new Date(Date.now() - 3 * 86400000).toISOString()
   },
   {
@@ -282,7 +301,7 @@ const DEFAULT_LOGS = [
     action: "Official Assigned",
     previous_status: "Pending",
     new_status: "Pending",
-    performed_by_name: "Admin System",
+    performed_by_name: "Grievance Secretariat",
     performed_by_role: "Admin",
     remarks: "Assigned to Er. Arvind Mehta (Water Supply & Sewage Board).",
     created_at: new Date(Date.now() - 2 * 86400000).toISOString()
@@ -296,7 +315,7 @@ const DEFAULT_LOGS = [
     new_status: "In Progress",
     performed_by_name: "Er. Arvind Mehta",
     performed_by_role: "Department Official",
-    remarks: "Inspection complete. Field team deployed with replacement ductile iron pipe segment.",
+    remarks: "Inspection complete. Field team deployed with ductile iron pipe segment.",
     created_at: new Date(Date.now() - 1 * 86400000).toISOString()
   },
   {
@@ -308,7 +327,7 @@ const DEFAULT_LOGS = [
     new_status: "Pending",
     performed_by_name: "Likith Sai",
     performed_by_role: "Citizen",
-    remarks: "Pothole issue submitted with ward marker.",
+    remarks: "Pothole issue submitted with ward marker and photo evidence.",
     created_at: new Date(Date.now() - 5 * 86400000).toISOString()
   },
   {
@@ -320,7 +339,7 @@ const DEFAULT_LOGS = [
     new_status: "In Progress",
     performed_by_name: "Er. Priya Sharma",
     performed_by_role: "Department Official",
-    remarks: "Material procurement arranged for rapid asphalt filling.",
+    remarks: "Emergency asphalt patch work batch approved for immediate night repair.",
     created_at: new Date(Date.now() - 4 * 86400000).toISOString()
   },
   {
@@ -332,7 +351,7 @@ const DEFAULT_LOGS = [
     new_status: "Resolved",
     performed_by_name: "Er. Priya Sharma",
     performed_by_role: "Department Official",
-    remarks: "Road resurfaced and leveled. Quality inspection cleared by Junior Engineer.",
+    remarks: "Road resurfaced and leveled. Quality inspection passed by Junior Engineer.",
     created_at: new Date(Date.now() - 6 * 3600000).toISOString()
   },
   {
@@ -345,7 +364,7 @@ const DEFAULT_LOGS = [
     performed_by_name: "Aarti Sharma",
     performed_by_role: "Citizen",
     remarks: "Hazardous electric wire sparking reported under Urgent priority.",
-    created_at: new Date(Date.now() - 12 * 3600000).toISOString()
+    created_at: new Date(Date.now() - 14 * 3600000).toISOString()
   },
   {
     id: "log_008",
@@ -368,11 +387,23 @@ const DEFAULT_LOGS = [
     new_status: "In Progress",
     performed_by_name: "Dr. S. K. Nambiar",
     performed_by_role: "Department Official",
-    remarks: "Added to North Ward morning sanitation sweep route.",
-    created_at: new Date(Date.now() - 18 * 3600000).toISOString()
+    remarks: "Sanitation compactor squad routed to North Ward.",
+    created_at: new Date(Date.now() - 1 * 86400000).toISOString()
   },
   {
     id: "log_010",
+    grievance_id: "grv_004",
+    tracking_id: "GRV-2026-1004",
+    action: "Grievance Resolved",
+    previous_status: "In Progress",
+    new_status: "Resolved",
+    performed_by_name: "Dr. S. K. Nambiar",
+    performed_by_role: "Department Official",
+    remarks: "Refuse cleared and area sanitized with disinfectant.",
+    created_at: new Date(Date.now() - 4 * 3600000).toISOString()
+  },
+  {
+    id: "log_011",
     grievance_id: "grv_005",
     tracking_id: "GRV-2026-1005",
     action: "Grievance Registered",
@@ -384,19 +415,19 @@ const DEFAULT_LOGS = [
     created_at: new Date(Date.now() - 7 * 86400000).toISOString()
   },
   {
-    id: "log_011",
+    id: "log_012",
     grievance_id: "grv_005",
     tracking_id: "GRV-2026-1005",
     action: "Official Assigned",
     previous_status: "Pending",
     new_status: "In Progress",
-    performed_by_name: "Admin System",
+    performed_by_name: "Grievance Secretariat",
     performed_by_role: "Admin",
     remarks: "Forwarded to Central Traffic Police Station.",
     created_at: new Date(Date.now() - 4 * 86400000).toISOString()
   },
   {
-    id: "log_012",
+    id: "log_013",
     grievance_id: "grv_005",
     tracking_id: "GRV-2026-1005",
     action: "Grievance Resolved",
@@ -404,8 +435,8 @@ const DEFAULT_LOGS = [
     new_status: "Resolved",
     performed_by_name: "Insp. Vikram Singh",
     performed_by_role: "Department Official",
-    remarks: "Vehicles towed away, challans issued, sign board fixed.",
-    created_at: new Date(Date.now() - 24 * 3600000).toISOString()
+    remarks: "Vehicles towed away, challans issued, cautionary bollards installed.",
+    created_at: new Date(Date.now() - 1 * 86400000).toISOString()
   }
 ];
 
@@ -435,67 +466,82 @@ class DataRepository {
   async testSupabase() {
     if (!supabaseClient) return false;
     try {
-      const { data, error } = await supabaseClient.from("departments").select("id").limit(1);
-      if (error) {
-        console.warn("Supabase query returned error:", error.message);
-        return false;
+      const { data, error } = await supabaseClient
+        .from("departments")
+        .select("id")
+        .limit(1);
+      
+      if (!error) {
+        isSupabaseOnline = true;
+        return true;
       }
-      return true;
-    } catch (e) {
-      console.warn("Supabase connection check failed:", e);
+      return false;
+    } catch (err) {
+      console.warn("Supabase test connectivity warning:", err);
       return false;
     }
   }
 
   // --- Departments ---
   async getDepartments() {
-    if (isSupabaseOnline) {
+    if (supabaseClient) {
       try {
-        const { data, error } = await supabaseClient.from("departments").select("*").order("name");
-        if (!error && data && data.length > 0) return data;
-      } catch (e) {
-        console.warn("Fallback to local departments:", e);
+        const { data, error } = await supabaseClient
+          .from("departments")
+          .select("*")
+          .order("name", { ascending: true });
+        if (!error && data && data.length > 0) {
+          localStorage.setItem("pgrrs_departments", JSON.stringify(data));
+          return data;
+        }
+      } catch (err) {
+        console.warn("Using local departments fallback:", err);
       }
     }
     return JSON.parse(localStorage.getItem("pgrrs_departments")) || DEFAULT_DEPARTMENTS;
   }
 
-  // --- Profiles / Auth ---
+  // --- Profiles (Strict User Directory) ---
   async getProfileByEmail(email) {
-    if (isSupabaseOnline) {
+    const cleanEmail = email.trim().toLowerCase();
+    if (supabaseClient) {
       try {
         const { data, error } = await supabaseClient
           .from("profiles")
           .select("*")
-          .eq("email", email.trim().toLowerCase())
+          .eq("email", cleanEmail)
           .single();
-        if (!error && data) return data;
-      } catch (e) {
-        console.warn("Fallback to local profiles:", e);
+        if (!error && data) {
+          return data;
+        }
+      } catch (err) {
+        console.warn("Using local profile query fallback:", err);
       }
     }
     const profiles = JSON.parse(localStorage.getItem("pgrrs_profiles")) || DEFAULT_PROFILES;
-    return profiles.find(p => p.email.toLowerCase() === email.trim().toLowerCase()) || null;
+    return profiles.find(p => p.email.toLowerCase() === cleanEmail) || null;
   }
 
   async getOfficials() {
-    if (isSupabaseOnline) {
+    if (supabaseClient) {
       try {
         const { data, error } = await supabaseClient
           .from("profiles")
           .select("*")
-          .in("role", ["official", "admin"]);
-        if (!error && data && data.length > 0) return data;
-      } catch (e) {
-        console.warn("Fallback to local officials:", e);
+          .eq("role", "official");
+        if (!error && data && data.length > 0) {
+          return data;
+        }
+      } catch (err) {
+        console.warn("Using local officials fallback:", err);
       }
     }
     const profiles = JSON.parse(localStorage.getItem("pgrrs_profiles")) || DEFAULT_PROFILES;
-    return profiles.filter(p => p.role === "official" || p.role === "admin");
+    return profiles.filter(p => p.role === "official");
   }
 
   async createProfile(profileData) {
-    if (isSupabaseOnline) {
+    if (supabaseClient) {
       try {
         const { data, error } = await supabaseClient
           .from("profiles")
@@ -503,21 +549,22 @@ class DataRepository {
           .select()
           .single();
         if (!error && data) {
-          // Sync locally as well
           const localProfiles = JSON.parse(localStorage.getItem("pgrrs_profiles")) || [];
           localProfiles.push(data);
           localStorage.setItem("pgrrs_profiles", JSON.stringify(localProfiles));
           return { data, error: null };
         }
-        if (error) throw error;
-      } catch (e) {
-        console.warn("Supabase create profile error, falling back locally:", e.message);
+        if (error && error.code === "23505") {
+          return { data: null, error: new Error("An account with this email address already exists.") };
+        }
+      } catch (err) {
+        console.warn("Supabase createProfile warning, persisting locally:", err);
       }
     }
-    // Local creation
+    // Local fallback
     const localProfiles = JSON.parse(localStorage.getItem("pgrrs_profiles")) || DEFAULT_PROFILES;
     if (localProfiles.some(p => p.email.toLowerCase() === profileData.email.toLowerCase())) {
-      return { data: null, error: { message: "Email is already registered. Please sign in." } };
+      return { data: null, error: new Error("An account with this email address already exists.") };
     }
     localProfiles.push(profileData);
     localStorage.setItem("pgrrs_profiles", JSON.stringify(localProfiles));
@@ -526,15 +573,18 @@ class DataRepository {
 
   // --- Grievances ---
   async getGrievances() {
-    if (isSupabaseOnline) {
+    if (supabaseClient) {
       try {
         const { data, error } = await supabaseClient
           .from("grievances")
           .select("*")
           .order("created_at", { ascending: false });
-        if (!error && data) return data;
-      } catch (e) {
-        console.warn("Supabase getGrievances error, fallback:", e);
+        if (!error && data && data.length > 0) {
+          localStorage.setItem("pgrrs_grievances", JSON.stringify(data));
+          return data;
+        }
+      } catch (err) {
+        console.warn("Using local grievances fallback:", err);
       }
     }
     return JSON.parse(localStorage.getItem("pgrrs_grievances")) || DEFAULT_GRIEVANCES;
@@ -542,16 +592,18 @@ class DataRepository {
 
   async getGrievanceByTrackingId(trackingId) {
     const cleanId = trackingId.trim().toUpperCase();
-    if (isSupabaseOnline) {
+    if (supabaseClient) {
       try {
         const { data, error } = await supabaseClient
           .from("grievances")
           .select("*")
           .eq("tracking_id", cleanId)
           .single();
-        if (!error && data) return data;
-      } catch (e) {
-        console.warn("Supabase lookup error:", e);
+        if (!error && data) {
+          return data;
+        }
+      } catch (err) {
+        console.warn("Using local trackingId search fallback:", err);
       }
     }
     const grievances = JSON.parse(localStorage.getItem("pgrrs_grievances")) || DEFAULT_GRIEVANCES;
@@ -559,8 +611,7 @@ class DataRepository {
   }
 
   async createGrievance(grievanceData) {
-    let savedGrievance = null;
-    if (isSupabaseOnline) {
+    if (supabaseClient) {
       try {
         const { data, error } = await supabaseClient
           .from("grievances")
@@ -568,61 +619,72 @@ class DataRepository {
           .select()
           .single();
         if (!error && data) {
-          savedGrievance = data;
+          const local = JSON.parse(localStorage.getItem("pgrrs_grievances")) || [];
+          local.unshift(data);
+          localStorage.setItem("pgrrs_grievances", JSON.stringify(local));
+          return data;
         }
-      } catch (e) {
-        console.warn("Supabase createGrievance error, using local:", e);
+        console.warn("Supabase insert returned error, saving locally:", error);
+      } catch (err) {
+        console.warn("Supabase createGrievance failed, saving locally:", err);
       }
     }
-    if (!savedGrievance) {
-      savedGrievance = grievanceData;
-    }
-    // Always keep local updated
     const local = JSON.parse(localStorage.getItem("pgrrs_grievances")) || DEFAULT_GRIEVANCES;
-    local.unshift(savedGrievance);
+    local.unshift(grievanceData);
     localStorage.setItem("pgrrs_grievances", JSON.stringify(local));
-
-    return savedGrievance;
+    return grievanceData;
   }
 
   async updateGrievance(id, updates) {
-    let updated = null;
-    if (isSupabaseOnline) {
+    const updatedWithTime = {
+      ...updates,
+      updated_at: new Date().toISOString()
+    };
+    if (supabaseClient) {
       try {
         const { data, error } = await supabaseClient
           .from("grievances")
-          .update(updates)
+          .update(updatedWithTime)
           .eq("id", id)
           .select()
           .single();
-        if (!error && data) updated = data;
-      } catch (e) {
-        console.warn("Supabase updateGrievance error, fallback:", e);
+        if (!error && data) {
+          const local = JSON.parse(localStorage.getItem("pgrrs_grievances")) || DEFAULT_GRIEVANCES;
+          const idx = local.findIndex(g => g.id === id);
+          if (idx !== -1) {
+            local[idx] = data;
+            localStorage.setItem("pgrrs_grievances", JSON.stringify(local));
+          }
+          return data;
+        }
+      } catch (err) {
+        console.warn("Supabase updateGrievance fallback:", err);
       }
     }
-    // Update local store
     const local = JSON.parse(localStorage.getItem("pgrrs_grievances")) || DEFAULT_GRIEVANCES;
-    const index = local.findIndex(g => g.id === id);
-    if (index !== -1) {
-      local[index] = { ...local[index], ...updates };
+    const idx = local.findIndex(g => g.id === id);
+    if (idx !== -1) {
+      local[idx] = { ...local[idx], ...updatedWithTime };
       localStorage.setItem("pgrrs_grievances", JSON.stringify(local));
-      if (!updated) updated = local[index];
+      return local[idx];
     }
-    return updated;
+    return null;
   }
 
-  // --- Logs ---
+  // --- Logs / Timeline Audit ---
   async getLogs(grievanceId) {
-    if (isSupabaseOnline) {
+    if (supabaseClient) {
       try {
         const { data, error } = await supabaseClient
           .from("grievance_logs")
           .select("*")
           .eq("grievance_id", grievanceId)
           .order("created_at", { ascending: true });
-        if (!error && data && data.length > 0) return data;
-      } catch (e) {
-        console.warn("Supabase getLogs error:", e);
+        if (!error && data && data.length > 0) {
+          return data;
+        }
+      } catch (err) {
+        console.warn("Using local logs fallback:", err);
       }
     }
     const logs = JSON.parse(localStorage.getItem("pgrrs_logs")) || DEFAULT_LOGS;
@@ -632,122 +694,171 @@ class DataRepository {
   }
 
   async addLog(logData) {
-    if (isSupabaseOnline) {
+    if (supabaseClient) {
       try {
-        await supabaseClient.from("grievance_logs").insert([logData]);
-      } catch (e) {
-        console.warn("Supabase addLog error:", e);
+        const { data, error } = await supabaseClient
+          .from("grievance_logs")
+          .insert([logData])
+          .select()
+          .single();
+        if (!error && data) {
+          const local = JSON.parse(localStorage.getItem("pgrrs_logs")) || [];
+          local.push(data);
+          localStorage.setItem("pgrrs_logs", JSON.stringify(local));
+          return data;
+        }
+      } catch (err) {
+        console.warn("Supabase addLog fallback:", err);
       }
     }
-    const localLogs = JSON.parse(localStorage.getItem("pgrrs_logs")) || DEFAULT_LOGS;
-    localLogs.push(logData);
-    localStorage.setItem("pgrrs_logs", JSON.stringify(localLogs));
+    const local = JSON.parse(localStorage.getItem("pgrrs_logs")) || DEFAULT_LOGS;
+    local.push(logData);
+    localStorage.setItem("pgrrs_logs", JSON.stringify(local));
     return logData;
+  }
+
+  // --- Storage Bucket Direct Image Upload ---
+  /**
+   * Uploads file to Supabase Storage bucket 'images' and returns public URL
+   * In case bucket is not initialized or fails, returns Base64 Data URL as resilient fallback
+   */
+  async uploadGrievanceImage(file, trackingId) {
+    if (!file) return null;
+
+    if (supabaseClient) {
+      try {
+        const fileExt = file.name.split(".").pop() || "jpg";
+        const cleanExt = fileExt.toLowerCase().replace(/[^a-z0-9]/g, "");
+        const fileName = `grievance_${trackingId}_${Date.now()}.${cleanExt}`;
+        const filePath = `${fileName}`;
+
+        // Attempt direct upload to Supabase storage bucket 'images'
+        const { data: uploadData, error: uploadError } = await supabaseClient.storage
+          .from("images")
+          .upload(filePath, file, {
+            cacheControl: "3600",
+            upsert: true
+          });
+
+        if (!uploadError) {
+          const { data: urlData } = supabaseClient.storage
+            .from("images")
+            .getPublicUrl(filePath);
+
+          if (urlData && urlData.publicUrl) {
+            return urlData.publicUrl;
+          }
+        } else {
+          console.warn("Supabase storage upload returned error, using Data URL fallback:", uploadError);
+        }
+      } catch (err) {
+        console.warn("Supabase storage bucket upload exception, falling back:", err);
+      }
+    }
+
+    // High-fidelity fallback: convert file to Base64 Data URL so the photo is preserved
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (e) => resolve(e.target.result);
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(file);
+    });
   }
 }
 
 const db = new DataRepository();
 
 // ==============================================================================
-// 4. APPLICATION STATE
+// 4. GLOBAL STATE
 // ==============================================================================
 const state = {
-  currentUser: null, // { id, email, full_name, role, phone, department_id, district }
-  activeView: "home", // 'home', 'file-grievance', 'my-grievances', 'dashboard', 'analytics', 'public-track'
+  currentView: "home",
+  currentUser: null, // { id, email, full_name, role, phone, department_id, official_designation, district }
   departments: [],
-  allGrievances: [],
   officials: [],
-  currentFilter: {
-    department: "all",
-    status: "all",
-    priority: "all",
-    search: ""
-  },
-  selectedGrievanceForModal: null
+  grievances: [],
+  selectedFile: null,
+  activeTrackingGrievance: null,
+  activeUpdateGrievanceId: null
 };
 
 // ==============================================================================
-// 5. UTILITY FUNCTIONS
+// 5. HELPER UTILITIES
 // ==============================================================================
 function generateTrackingId() {
-  const year = new Date().getFullYear();
-  const randomNum = Math.floor(1000 + Math.random() * 9000);
-  return `GRV-${year}-${randomNum}`;
+  const year = 2026;
+  const seq = Math.floor(1000 + Math.random() * 9000);
+  return `GRV-${year}-${seq}`;
 }
 
 function formatDate(isoString) {
   if (!isoString) return "N/A";
-  const date = new Date(isoString);
-  return date.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit"
-  });
-}
-
-function getRelativeTime(isoString) {
-  if (!isoString) return "";
-  const diffMs = Date.now() - new Date(isoString).getTime();
-  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-  if (diffHours < 1) return "Just now";
-  if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? "s" : ""} ago`;
-  const diffDays = Math.floor(diffHours / 24);
-  return `${diffDays} day${diffDays > 1 ? "s" : ""} ago`;
+  try {
+    const d = new Date(isoString);
+    return d.toLocaleDateString("en-IN", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit"
+    });
+  } catch (e) {
+    return isoString;
+  }
 }
 
 function maskName(name) {
-  if (!name) return "Citizen";
+  if (!name) return "Anonymous Citizen";
   const parts = name.trim().split(" ");
   return parts
-    .map(p => (p.length > 2 ? p[0] + "*".repeat(p.length - 2) + p[p.length - 1] : p[0] + "*"))
+    .map(p => (p.length > 1 ? `${p[0]}${"*".repeat(p.length - 1)}` : p))
     .join(" ");
 }
 
 function getStatusBadgeHtml(status) {
-  switch (status) {
-    case "Pending":
-      return `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold badge-status-pending">
-        <span class="w-1.5 h-1.5 mr-1.5 rounded-full bg-amber-500 animate-pulse"></span>Pending
-      </span>`;
-    case "In Progress":
-      return `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold badge-status-inprogress">
-        <span class="w-1.5 h-1.5 mr-1.5 rounded-full bg-blue-500 animate-pulse"></span>In Progress
-      </span>`;
-    case "Resolved":
-      return `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold badge-status-resolved">
-        <svg class="w-3.5 h-3.5 mr-1 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>Resolved
-      </span>`;
-    case "Rejected":
-      return `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold badge-status-rejected">
-        <svg class="w-3.5 h-3.5 mr-1 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>Rejected
-      </span>`;
-    default:
-      return `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-800">${status}</span>`;
-  }
+  const map = {
+    Pending: {
+      text: "Pending Review",
+      cls: "badge-status-pending"
+    },
+    "In Progress": {
+      text: "In Progress (Field Action)",
+      cls: "badge-status-inprogress"
+    },
+    Resolved: {
+      text: "Resolved & Verified",
+      cls: "badge-status-resolved"
+    },
+    Rejected: {
+      text: "Rejected / Closed",
+      cls: "badge-status-rejected"
+    }
+  };
+  const c = map[status] || { text: status, cls: "bg-slate-100 text-slate-800" };
+  return `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold ${c.cls}">${c.text}</span>`;
 }
 
 function getPriorityBadgeHtml(priority) {
-  switch (priority) {
-    case "Urgent":
-      return `<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold badge-priority-urgent pulse-badge">
-        <svg class="w-3 h-3 mr-1 text-rose-600" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>Urgent
-      </span>`;
-    case "High":
-      return `<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold badge-priority-high">
-        High
-      </span>`;
-    case "Medium":
-      return `<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium badge-priority-medium">
-        Medium
-      </span>`;
-    case "Low":
-    default:
-      return `<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-normal badge-priority-low">
-        Low
-      </span>`;
-  }
+  const map = {
+    Urgent: {
+      cls: "badge-priority-urgent",
+      label: "Urgent (24h SLA)"
+    },
+    High: {
+      cls: "badge-priority-high",
+      label: "High (48h SLA)"
+    },
+    Medium: {
+      cls: "badge-priority-medium",
+      label: "Medium"
+    },
+    Low: {
+      cls: "badge-priority-low",
+      label: "Low"
+    }
+  };
+  const c = map[priority] || { cls: "bg-slate-100 text-slate-700", label: priority };
+  return `<span class="inline-flex items-center px-2.5 py-0.5 rounded text-[11px] font-bold ${c.cls}">${c.label}</span>`;
 }
 
 function showToast(message, type = "success") {
@@ -757,254 +868,314 @@ function showToast(message, type = "success") {
   const toast = document.createElement("div");
   const bgClass =
     type === "success"
-      ? "bg-slate-900 border-emerald-500 text-white"
+      ? "bg-slate-900 border-l-4 border-emerald-500 text-white"
       : type === "error"
-      ? "bg-rose-900 border-rose-500 text-white"
-      : "bg-slate-900 border-amber-500 text-white";
+      ? "bg-slate-900 border-l-4 border-rose-500 text-white"
+      : "bg-slate-900 border-l-4 border-amber-500 text-white";
 
-  const iconSvg =
+  toast.className = `p-4 rounded-xl shadow-2xl border border-slate-700 text-xs font-semibold pointer-events-auto flex items-center space-x-3 transition-all transform duration-300 translate-y-2 opacity-0 max-w-sm ${bgClass}`;
+
+  const icon =
     type === "success"
-      ? `<svg class="w-5 h-5 text-emerald-400 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>`
+      ? `<svg class="w-5 h-5 text-emerald-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>`
       : type === "error"
-      ? `<svg class="w-5 h-5 text-rose-400 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>`
-      : `<svg class="w-5 h-5 text-amber-400 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>`;
+      ? `<svg class="w-5 h-5 text-rose-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>`
+      : `<svg class="w-5 h-5 text-amber-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>`;
 
-  toast.className = `flex items-center p-4 mb-3 max-w-md rounded-lg border shadow-xl transform transition-all duration-300 translate-y-2 opacity-0 ${bgClass}`;
   toast.innerHTML = `
-    ${iconSvg}
-    <div class="text-sm font-medium flex-1">${message}</div>
-    <button onclick="this.parentElement.remove()" class="ml-3 text-slate-400 hover:text-white">&times;</button>
+    ${icon}
+    <div class="flex-1 leading-snug">${message}</div>
+    <button onclick="this.parentElement.remove()" class="text-slate-400 hover:text-white font-bold ml-2 text-sm">&times;</button>
   `;
 
   container.appendChild(toast);
-  requestAnimationFrame(() => {
+
+  setTimeout(() => {
     toast.classList.remove("translate-y-2", "opacity-0");
-  });
+  }, 10);
 
   setTimeout(() => {
     toast.classList.add("opacity-0", "translate-y-2");
     setTimeout(() => toast.remove(), 300);
-  }, 4000);
+  }, 4500);
 }
 
-// Confetti celebration for resolved grievance
 function triggerConfetti() {
-  if (window.confetti) {
-    window.confetti({
-      particleCount: 100,
+  if (typeof confetti === "function") {
+    confetti({
+      particleCount: 80,
       spread: 70,
-      origin: { y: 0.6 }
+      origin: { y: 0.6 },
+      colors: ["#d97706", "#b91c1c", "#059669", "#ffffff"]
     });
   }
 }
 
 // ==============================================================================
-// 6. INITIALIZATION & DATA LOADING
+// 6. INITIALIZATION & DATA SYNC
 // ==============================================================================
 async function initApp() {
-  // Check persisted user session
-  const savedUser = localStorage.getItem("pgrrs_session");
-  if (savedUser) {
+  // 1. Check restored session
+  const savedSession = localStorage.getItem("pgrrs_session");
+  if (savedSession) {
     try {
-      state.currentUser = JSON.parse(savedUser);
+      state.currentUser = JSON.parse(savedSession);
     } catch (e) {
-      localStorage.removeItem("pgrrs_session");
+      state.currentUser = null;
     }
   }
 
-  // Probe Supabase Database
-  isSupabaseOnline = await db.testSupabase();
-  updateSupabaseStatusBadge(isSupabaseOnline);
+  // 2. Test Supabase connection
+  const online = await db.testSupabase();
+  updateSupabaseStatusBadge(online);
 
-  // Load Initial Data
+  // 3. Load initial data
   await refreshData();
 
-  // Populate Dropdowns
-  populateDepartmentDropdowns();
-
-  // Setup Event Listeners
+  // 4. Setup Event Listeners
   setupEventListeners();
 
-  // Render initial view
+  // 5. Setup File Drag & Drop
+  setupFileDropzone();
+
+  // 6. Render Initial View
   renderNavigation();
-  navigate(state.activeView);
+  navigate("home");
 }
 
 async function refreshData() {
   state.departments = await db.getDepartments();
-  state.allGrievances = await db.getGrievances();
   state.officials = await db.getOfficials();
+  state.grievances = await db.getGrievances();
+
+  populateDepartmentDropdowns();
+  renderHomeStats();
+  renderArchiveFeed();
+
+  if (state.currentUser) {
+    if (state.currentUser.role === "citizen") {
+      renderCitizenGrievances();
+    } else {
+      renderAdminDashboard();
+    }
+  }
 }
 
 function updateSupabaseStatusBadge(online) {
-  const badge = document.getElementById("supabase-status-indicator");
-  if (!badge) return;
+  const el = document.getElementById("supabase-status-indicator");
+  if (!el) return;
 
   if (online) {
-    badge.innerHTML = `
-      <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-950/80 text-emerald-300 border border-emerald-600/50 cursor-pointer hover:bg-emerald-900 transition" onclick="openSqlModal()">
-        <span class="w-2 h-2 mr-1.5 rounded-full bg-emerald-400 animate-ping"></span>
-        <span class="w-2 h-2 mr-1.5 rounded-full bg-emerald-400 -ml-3.5"></span>
-        Supabase Live: Synchronized
+    el.innerHTML = `
+      <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] bg-emerald-950/80 text-emerald-300 border border-emerald-800">
+        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 mr-1.5 animate-pulse"></span>
+        Supabase Cloud Connected
       </span>
     `;
   } else {
-    badge.innerHTML = `
-      <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-950/80 text-amber-300 border border-amber-500/50 cursor-pointer hover:bg-amber-900 transition" onclick="openSqlModal()" title="Click to view schema setup SQL">
-        <span class="w-2 h-2 mr-1.5 rounded-full bg-amber-400 animate-pulse"></span>
-        Supabase: Local Simulation Active (Setup SQL)
+    el.innerHTML = `
+      <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] bg-slate-900 text-slate-300 border border-slate-700">
+        <span class="w-1.5 h-1.5 rounded-full bg-amber-400 mr-1.5"></span>
+        Supabase Offline (Dual Sync Fallback Active)
       </span>
     `;
   }
 }
 
 function populateDepartmentDropdowns() {
-  const grievanceDeptSelect = document.getElementById("grievance-department");
-  const filterDeptSelect = document.getElementById("filter-department");
-  const signupDeptSelect = document.getElementById("signup-department");
-
-  if (grievanceDeptSelect) {
-    grievanceDeptSelect.innerHTML = `<option value="" disabled selected>Select Responsible Civic Department</option>`;
-    state.departments.forEach(dept => {
-      grievanceDeptSelect.innerHTML += `<option value="${dept.id}">${dept.name} (${dept.code})</option>`;
-    });
+  // Grievance filing dropdown
+  const fileSelect = document.getElementById("grievance-department");
+  if (fileSelect) {
+    fileSelect.innerHTML = state.departments
+      .map(d => `<option value="${d.id}">${d.name} (${d.sla_hours}h SLA)</option>`)
+      .join("");
   }
 
-  if (filterDeptSelect) {
-    filterDeptSelect.innerHTML = `<option value="all">All Civic Departments</option>`;
-    state.departments.forEach(dept => {
-      filterDeptSelect.innerHTML += `<option value="${dept.id}">${dept.name}</option>`;
-    });
+  // Register Official dropdown
+  const signupDept = document.getElementById("signup-department");
+  if (signupDept) {
+    signupDept.innerHTML = state.departments
+      .map(d => `<option value="${d.id}">${d.name}</option>`)
+      .join("");
   }
 
-  if (signupDeptSelect) {
-    signupDeptSelect.innerHTML = `<option value="">Select Official Department</option>`;
-    state.departments.forEach(dept => {
-      signupDeptSelect.innerHTML += `<option value="${dept.id}">${dept.name}</option>`;
-    });
+  // Admin filter dropdown
+  const filterDept = document.getElementById("filter-department");
+  if (filterDept) {
+    const currentVal = filterDept.value || "all";
+    filterDept.innerHTML = `<option value="all">All Departments</option>` +
+      state.departments
+        .map(d => `<option value="${d.id}">${d.name}</option>`)
+        .join("");
+    filterDept.value = currentVal;
+  }
+
+  // Archive filter dropdown
+  const archiveDept = document.getElementById("archive-dept-filter");
+  if (archiveDept) {
+    const currentVal = archiveDept.value || "all";
+    archiveDept.innerHTML = `<option value="all">All Civic Boards</option>` +
+      state.departments
+        .map(d => `<option value="${d.id}">${d.name}</option>`)
+        .join("");
+    archiveDept.value = currentVal;
   }
 }
 
 // ==============================================================================
-// 7. NAVIGATION & ROUTING
+// 7. NAVIGATION & VIEW CONTROLLER
 // ==============================================================================
 function navigate(viewName) {
-  state.activeView = viewName;
-
-  // View sections
-  const views = {
-    home: document.getElementById("view-home"),
-    "file-grievance": document.getElementById("view-file-grievance"),
-    "my-grievances": document.getElementById("view-my-grievances"),
-    dashboard: document.getElementById("view-dashboard"),
-    analytics: document.getElementById("view-analytics"),
-    "public-track": document.getElementById("view-public-track")
-  };
-
-  // Hide all
-  Object.values(views).forEach(v => {
-    if (v) v.classList.add("hidden");
-  });
-
-  // Role Gatekeepers
-  if (viewName === "file-grievance" && !state.currentUser) {
-    showToast("Please log in or register to lodge a grievance", "info");
-    openAuthModal("signin");
-    viewName = "home";
-  }
-
-  if (viewName === "my-grievances" && (!state.currentUser || state.currentUser.role !== "citizen")) {
+  // Check protected views
+  if (viewName === "file-grievance" || viewName === "my-grievances") {
     if (!state.currentUser) {
-      showToast("Please sign in as Citizen to view your grievances", "info");
+      showToast("Please authenticate as a registered citizen to continue.", "info");
       openAuthModal("signin");
-      viewName = "home";
+      return;
     }
   }
 
-  if (viewName === "dashboard" && (!state.currentUser || (state.currentUser.role !== "official" && state.currentUser.role !== "admin"))) {
-    showToast("Dashboard restricted to Officials & Administrators", "error");
-    viewName = "home";
+  if (viewName === "dashboard") {
+    if (!state.currentUser || (state.currentUser.role !== "official" && state.currentUser.role !== "admin")) {
+      showToast("Access restricted to authorized Department Officials & Admins.", "error");
+      openAuthModal("signin");
+      return;
+    }
   }
 
+  state.currentView = viewName;
+
+  // Hide all views
+  const views = [
+    "view-home",
+    "view-file-grievance",
+    "view-my-grievances",
+    "view-dashboard",
+    "view-archive",
+    "view-public-track"
+  ];
+  views.forEach(v => {
+    const el = document.getElementById(v);
+    if (el) el.classList.add("hidden");
+  });
+
   // Show active view
-  const targetView = views[viewName] || views.home;
-  if (targetView) {
-    targetView.classList.remove("hidden");
+  const target = document.getElementById(`view-${viewName}`);
+  if (target) {
+    target.classList.remove("hidden");
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
-  // Trigger view specific re-renders
+  // Update active state in navbar
+  document.querySelectorAll("[data-nav-target]").forEach(a => {
+    const isCurrent = a.getAttribute("data-nav-target") === viewName;
+    if (isCurrent) {
+      a.classList.add("text-amber-400", "border-amber-400");
+      a.classList.remove("text-slate-200", "border-transparent");
+    } else {
+      a.classList.remove("text-amber-400", "border-amber-400");
+      a.classList.add("text-slate-200", "border-transparent");
+    }
+  });
+
+  // View specific refreshes
   if (viewName === "home") {
     renderHomeStats();
   } else if (viewName === "my-grievances") {
     renderCitizenGrievances();
   } else if (viewName === "dashboard") {
     renderAdminDashboard();
-  } else if (viewName === "analytics") {
-    renderPublicAnalytics();
+  } else if (viewName === "archive") {
+    renderArchiveFeed();
   }
 
-  renderNavigation();
+  // Close mobile menu if open
+  const mobileMenu = document.getElementById("mobile-menu");
+  if (mobileMenu) mobileMenu.classList.add("hidden");
+}
+
+function handleLodgeGrievanceClick() {
+  if (!state.currentUser) {
+    showToast("Please sign in or register to lodge an official grievance.", "info");
+    openAuthModal("signin");
+  } else if (state.currentUser.role === "citizen") {
+    navigate("file-grievance");
+  } else {
+    showToast("You are logged in as an Official/Admin. Switch to a citizen account to lodge a personal grievance.", "info");
+  }
 }
 
 function renderNavigation() {
   const loggedOutNav = document.getElementById("nav-logged-out");
   const loggedInNav = document.getElementById("nav-logged-in");
-  const roleBadge = document.getElementById("nav-role-badge");
-  const userNameDisplay = document.getElementById("nav-user-name");
-  const citizenLinks = document.querySelectorAll(".nav-link-citizen");
-  const officialLinks = document.querySelectorAll(".nav-link-official");
+  const mobileAuthOut = document.getElementById("mobile-auth-logged-out");
+  const mobileAuthIn = document.getElementById("mobile-auth-logged-in");
+
+  const citizenNavs = document.querySelectorAll(".nav-link-citizen");
+  const officialNavs = document.querySelectorAll(".nav-link-official");
 
   if (state.currentUser) {
     if (loggedOutNav) loggedOutNav.classList.add("hidden");
     if (loggedInNav) loggedInNav.classList.remove("hidden");
+    if (mobileAuthOut) mobileAuthOut.classList.add("hidden");
+    if (mobileAuthIn) mobileAuthIn.classList.remove("hidden");
 
-    if (userNameDisplay) userNameDisplay.textContent = state.currentUser.full_name;
+    // Populate user profile info
+    const nameEl = document.getElementById("nav-user-name");
+    const roleLabel = document.getElementById("nav-user-role-label");
+    const roleBadge = document.getElementById("nav-role-badge");
 
-    if (roleBadge) {
-      let roleHtml = "";
-      if (state.currentUser.role === "admin") {
-        roleHtml = `<span class="px-2 py-0.5 rounded text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">Portal Admin</span>`;
-      } else if (state.currentUser.role === "official") {
-        const dept = state.departments.find(d => d.id === state.currentUser.department_id);
-        const deptCode = dept ? dept.code : "Official";
-        roleHtml = `<span class="px-2 py-0.5 rounded text-xs font-semibold bg-sky-500/20 text-sky-300 border border-sky-500/40">${deptCode} Official</span>`;
+    const mNameEl = document.getElementById("mobile-nav-user-name");
+    const mRoleEl = document.getElementById("mobile-nav-user-role");
+
+    if (nameEl) nameEl.textContent = state.currentUser.full_name;
+    if (mNameEl) mNameEl.textContent = state.currentUser.full_name;
+
+    const roleUpper = state.currentUser.role.toUpperCase();
+    if (roleLabel) {
+      if (state.currentUser.role === "official") {
+        const d = state.departments.find(dep => dep.id === state.currentUser.department_id);
+        roleLabel.textContent = `Official • ${d ? d.code : "Dept"}`;
+      } else if (state.currentUser.role === "admin") {
+        roleLabel.textContent = "Apex Administrator";
       } else {
-        roleHtml = `<span class="px-2 py-0.5 rounded text-xs font-medium bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">Verified Citizen</span>`;
+        roleLabel.textContent = "Registered Citizen";
       }
-      roleBadge.innerHTML = roleHtml;
     }
 
-    // Role-conditional nav elements
+    if (mRoleEl) mRoleEl.textContent = roleUpper;
+
+    if (roleBadge) {
+      if (state.currentUser.role === "admin") {
+        roleBadge.innerHTML = `<span class="px-2 py-0.5 rounded text-[10px] font-black uppercase bg-red-900/60 text-red-300 border border-red-700">ADMIN</span>`;
+      } else if (state.currentUser.role === "official") {
+        roleBadge.innerHTML = `<span class="px-2 py-0.5 rounded text-[10px] font-black uppercase bg-amber-900/60 text-amber-300 border border-amber-700">OFFICIAL</span>`;
+      } else {
+        roleBadge.innerHTML = `<span class="px-2 py-0.5 rounded text-[10px] font-black uppercase bg-emerald-900/60 text-emerald-300 border border-emerald-700">CITIZEN</span>`;
+      }
+    }
+
+    // Role specific links
     if (state.currentUser.role === "citizen") {
-      citizenLinks.forEach(el => el.classList.remove("hidden"));
-      officialLinks.forEach(el => el.classList.add("hidden"));
+      citizenNavs.forEach(el => el.classList.remove("hidden"));
+      officialNavs.forEach(el => el.classList.add("hidden"));
     } else {
-      citizenLinks.forEach(el => el.classList.add("hidden"));
-      officialLinks.forEach(el => el.classList.remove("hidden"));
+      citizenNavs.forEach(el => el.classList.add("hidden"));
+      officialNavs.forEach(el => el.classList.remove("hidden"));
     }
   } else {
     if (loggedOutNav) loggedOutNav.classList.remove("hidden");
     if (loggedInNav) loggedInNav.classList.add("hidden");
-    citizenLinks.forEach(el => el.classList.add("hidden"));
-    officialLinks.forEach(el => el.classList.add("hidden"));
-  }
+    if (mobileAuthOut) mobileAuthOut.classList.remove("hidden");
+    if (mobileAuthIn) mobileAuthIn.classList.add("hidden");
 
-  // Active link highlighters
-  document.querySelectorAll("[data-nav-target]").forEach(link => {
-    const target = link.getAttribute("data-nav-target");
-    if (target === state.activeView) {
-      link.classList.add("text-amber-400", "font-semibold");
-      link.classList.remove("text-slate-300");
-    } else {
-      link.classList.remove("text-amber-400", "font-semibold");
-      link.classList.add("text-slate-300");
-    }
-  });
+    citizenNavs.forEach(el => el.classList.add("hidden"));
+    officialNavs.forEach(el => el.classList.add("hidden"));
+  }
 }
 
 // ==============================================================================
-// 8. AUTHENTICATION MODULE (Profiles Table Integration)
+// 8. STRICT AUTHENTICATION (NO QUICK DEMO SHORTCUTS)
 // ==============================================================================
 function openAuthModal(tab = "signin") {
   const modal = document.getElementById("auth-modal");
@@ -1027,13 +1198,13 @@ function switchAuthTab(tab) {
   if (tab === "signin") {
     signinForm.classList.remove("hidden");
     signupForm.classList.add("hidden");
-    tabSigninBtn.className = "flex-1 py-3 text-sm font-semibold text-amber-500 border-b-2 border-amber-500";
-    tabSignupBtn.className = "flex-1 py-3 text-sm font-medium text-slate-400 hover:text-slate-200 border-b-2 border-transparent";
+    tabSigninBtn.className = "flex-1 py-3 text-xs font-black uppercase tracking-wider text-amber-600 border-b-2 border-amber-500";
+    tabSignupBtn.className = "flex-1 py-3 text-xs font-bold uppercase tracking-wider text-slate-500 hover:text-slate-800 border-b-2 border-transparent";
   } else {
     signinForm.classList.add("hidden");
     signupForm.classList.remove("hidden");
-    tabSignupBtn.className = "flex-1 py-3 text-sm font-semibold text-amber-500 border-b-2 border-amber-500";
-    tabSigninBtn.className = "flex-1 py-3 text-sm font-medium text-slate-400 hover:text-slate-200 border-b-2 border-transparent";
+    tabSignupBtn.className = "flex-1 py-3 text-xs font-black uppercase tracking-wider text-amber-600 border-b-2 border-amber-500";
+    tabSigninBtn.className = "flex-1 py-3 text-xs font-bold uppercase tracking-wider text-slate-500 hover:text-slate-800 border-b-2 border-transparent";
   }
 }
 
@@ -1041,23 +1212,23 @@ async function handleSignIn(email, password) {
   const submitBtn = document.getElementById("signin-submit-btn");
   if (submitBtn) {
     submitBtn.disabled = true;
-    submitBtn.innerHTML = `<svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg> Authenticating...`;
+    submitBtn.innerHTML = `<svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg> Authenticating with Profiles...`;
   }
 
   try {
     const user = await db.getProfileByEmail(email);
 
     if (!user) {
-      showToast("No account found with this email. Please register.", "error");
+      showToast("No verified profile matches this email. Please register.", "error");
       return;
     }
 
     if (user.password !== password) {
-      showToast("Incorrect password entered. Please try again.", "error");
+      showToast("Authentication failed: Incorrect password.", "error");
       return;
     }
 
-    // Success
+    // Success Authentication
     state.currentUser = {
       id: user.id,
       email: user.email,
@@ -1065,24 +1236,28 @@ async function handleSignIn(email, password) {
       role: user.role,
       phone: user.phone,
       department_id: user.department_id,
+      official_designation: user.official_designation,
       district: user.district
     };
 
     localStorage.setItem("pgrrs_session", JSON.stringify(state.currentUser));
-    showToast(`Welcome back, ${state.currentUser.full_name}! (${state.currentUser.role.toUpperCase()})`, "success");
+    showToast(`Welcome, ${state.currentUser.full_name}! (${state.currentUser.role.toUpperCase()})`, "success");
     closeAuthModal();
 
+    renderNavigation();
+
+    // Strict Role-Based Dynamic Routing
     if (state.currentUser.role === "citizen") {
       navigate("my-grievances");
     } else {
       navigate("dashboard");
     }
   } catch (err) {
-    showToast(err.message || "Failed to sign in", "error");
+    showToast(err.message || "Failed to authenticate.", "error");
   } finally {
     if (submitBtn) {
       submitBtn.disabled = false;
-      submitBtn.textContent = "Sign In to Civic Portal";
+      submitBtn.textContent = "Authenticate & Sign In";
     }
   }
 }
@@ -1091,10 +1266,21 @@ async function handleSignUp(userData) {
   const submitBtn = document.getElementById("signup-submit-btn");
   if (submitBtn) {
     submitBtn.disabled = true;
-    submitBtn.innerHTML = `<svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg> Creating Profile...`;
+    submitBtn.innerHTML = `<svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg> Registering Profile in Supabase...`;
   }
 
   try {
+    // Password validation: minimum 8 characters
+    if (userData.password.length < 8) {
+      showToast("Password must be at least 8 characters long.", "error");
+      return;
+    }
+
+    if (userData.password !== userData.confirmPassword) {
+      showToast("Passwords do not match.", "error");
+      return;
+    }
+
     const newProfile = {
       id: `usr_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
       email: userData.email.trim().toLowerCase(),
@@ -1102,7 +1288,8 @@ async function handleSignUp(userData) {
       full_name: userData.full_name.trim(),
       phone: userData.phone.trim(),
       role: userData.role,
-      department_id: userData.role !== "citizen" ? userData.department_id : null,
+      department_id: userData.role === "official" ? userData.department_id : null,
+      official_designation: userData.role === "official" ? userData.official_designation : null,
       district: userData.district.trim(),
       created_at: new Date().toISOString()
     };
@@ -1120,26 +1307,29 @@ async function handleSignUp(userData) {
       role: newProfile.role,
       phone: newProfile.phone,
       department_id: newProfile.department_id,
+      official_designation: newProfile.official_designation,
       district: newProfile.district
     };
 
     localStorage.setItem("pgrrs_session", JSON.stringify(state.currentUser));
-    showToast("Profile successfully registered in Supabase!", "success");
+    showToast("Profile successfully created and authenticated!", "success");
     closeAuthModal();
 
     await refreshData();
+    renderNavigation();
 
+    // Route dynamically based on role
     if (state.currentUser.role === "citizen") {
       navigate("file-grievance");
     } else {
       navigate("dashboard");
     }
   } catch (err) {
-    showToast(err.message || "Registration failed", "error");
+    showToast(err.message || "Registration failed.", "error");
   } finally {
     if (submitBtn) {
       submitBtn.disabled = false;
-      submitBtn.textContent = "Complete Civic Registration";
+      submitBtn.textContent = "Create Verified Profile";
     }
   }
 }
@@ -1147,28 +1337,94 @@ async function handleSignUp(userData) {
 function handleSignOut() {
   state.currentUser = null;
   localStorage.removeItem("pgrrs_session");
-  showToast("You have been signed out successfully.", "info");
+  showToast("You have been signed out.", "info");
+  renderNavigation();
   navigate("home");
 }
 
-// Quick Demo Login Shortcut
-function quickDemoLogin(role) {
-  if (role === "citizen") {
-    handleSignIn("citizen@civic.gov", "Citizen123!");
-  } else if (role === "official") {
-    handleSignIn("official.water@civic.gov", "Official123!");
-  } else if (role === "admin") {
-    handleSignIn("admin@civic.gov", "Admin123!");
+// ==============================================================================
+// 9. PHOTO DROPZONE & EVIDENCE UPLOAD
+// ==============================================================================
+function setupFileDropzone() {
+  const dropzone = document.getElementById("dropzone-area");
+  const fileInput = document.getElementById("grievance-file-input");
+  const emptyState = document.getElementById("dropzone-empty-state");
+  const previewState = document.getElementById("dropzone-preview-state");
+  const previewImg = document.getElementById("file-preview-img");
+  const previewName = document.getElementById("file-preview-name");
+  const previewSize = document.getElementById("file-preview-size");
+  const removeBtn = document.getElementById("btn-remove-file");
+
+  if (!dropzone || !fileInput) return;
+
+  dropzone.addEventListener("click", () => fileInput.click());
+
+  dropzone.addEventListener("dragover", (e) => {
+    e.preventDefault();
+    dropzone.classList.add("dragover");
+  });
+
+  dropzone.addEventListener("dragleave", () => {
+    dropzone.classList.remove("dragover");
+  });
+
+  dropzone.addEventListener("drop", (e) => {
+    e.preventDefault();
+    dropzone.classList.remove("dragover");
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      handleSelectedFile(e.dataTransfer.files[0]);
+    }
+  });
+
+  fileInput.addEventListener("change", (e) => {
+    if (e.target.files && e.target.files[0]) {
+      handleSelectedFile(e.target.files[0]);
+    }
+  });
+
+  if (removeBtn) {
+    removeBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      state.selectedFile = null;
+      fileInput.value = "";
+      emptyState.classList.remove("hidden");
+      previewState.classList.add("hidden");
+    });
+  }
+
+  function handleSelectedFile(file) {
+    if (file.size > 10 * 1024 * 1024) {
+      showToast("File size exceeds 10MB limit. Please choose a smaller image.", "error");
+      return;
+    }
+
+    state.selectedFile = file;
+    emptyState.classList.add("hidden");
+    previewState.classList.remove("hidden");
+
+    if (previewName) previewName.textContent = file.name;
+    if (previewSize) previewSize.textContent = `${(file.size / 1024).toFixed(1)} KB`;
+
+    // Preview
+    if (file.type.startsWith("image/")) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        if (previewImg) previewImg.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    } else {
+      if (previewImg) previewImg.src = "https://images.unsplash.com/photo-1568667256549-094345857637?auto=format&fit=crop&w=200&q=80";
+    }
   }
 }
 
 // ==============================================================================
-// 9. CITIZEN PORTAL (Submit & My Grievances)
+// 10. CITIZEN GRIEVANCE SUBMISSION
 // ==============================================================================
 async function handleGrievanceSubmit(e) {
   e.preventDefault();
   if (!state.currentUser) {
-    showToast("You must be logged in as Citizen to submit a grievance", "error");
+    showToast("You must be signed in as a Citizen to lodge a grievance.", "error");
     openAuthModal("signin");
     return;
   }
@@ -1179,10 +1435,9 @@ async function handleGrievanceSubmit(e) {
   const district = document.getElementById("grievance-district").value.trim();
   const location = document.getElementById("grievance-location").value.trim();
   const description = document.getElementById("grievance-description").value.trim();
-  const attachmentUrl = document.getElementById("grievance-attachment").value.trim() || null;
 
   if (!title || !departmentId || !priority || !location || !description) {
-    showToast("Please fill in all mandatory fields", "error");
+    showToast("Please fill in all mandatory fields marked with *", "error");
     return;
   }
 
@@ -1194,10 +1449,17 @@ async function handleGrievanceSubmit(e) {
   const submitBtn = document.getElementById("submit-grievance-btn");
   if (submitBtn) {
     submitBtn.disabled = true;
-    submitBtn.innerHTML = `<svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg> Registering Grievance in Supabase...`;
+    submitBtn.innerHTML = `<svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg> Uploading Evidence & Registering...`;
   }
 
   try {
+    // 1. Upload photo to Supabase storage bucket 'images'
+    let uploadedImageUrl = null;
+    if (state.selectedFile) {
+      uploadedImageUrl = await db.uploadGrievanceImage(state.selectedFile, trackingId);
+    }
+
+    // 2. Prepare Grievance Payload (storing in both image_url and attachment_url for complete compatibility)
     const newGrievance = {
       id: grievanceId,
       tracking_id: trackingId,
@@ -1212,7 +1474,8 @@ async function handleGrievanceSubmit(e) {
       district: district || state.currentUser.district || "Central District",
       location,
       description,
-      attachment_url: attachmentUrl,
+      image_url: uploadedImageUrl,
+      attachment_url: uploadedImageUrl,
       status: "Pending",
       assigned_official_id: null,
       assigned_official_name: null,
@@ -1222,10 +1485,10 @@ async function handleGrievanceSubmit(e) {
       updated_at: new Date().toISOString()
     };
 
-    // Save Grievance
+    // 3. Save Grievance to Supabase
     const saved = await db.createGrievance(newGrievance);
 
-    // Add initial log entry into grievance_logs
+    // 4. Append Initial Lifecycle Log to Supabase grievance_logs
     const initialLog = {
       id: `log_${Date.now()}`,
       grievance_id: saved.id,
@@ -1235,20 +1498,26 @@ async function handleGrievanceSubmit(e) {
       new_status: "Pending",
       performed_by_name: state.currentUser.full_name,
       performed_by_role: "Citizen",
-      remarks: "Grievance officially lodged through citizen self-service portal.",
+      remarks: "Grievance officially registered through Citizen Portal with photographic evidence.",
       created_at: new Date().toISOString()
     };
     await db.addLog(initialLog);
 
+    // 5. Trigger celebration & reset form
+    triggerConfetti();
+    document.getElementById("form-file-grievance").reset();
+    state.selectedFile = null;
+    const emptyState = document.getElementById("dropzone-empty-state");
+    const previewState = document.getElementById("dropzone-preview-state");
+    if (emptyState) emptyState.classList.remove("hidden");
+    if (previewState) previewState.classList.add("hidden");
+
     await refreshData();
 
-    // Reset Form
-    document.getElementById("form-file-grievance").reset();
-
-    // Open Success Acknowledgement Modal
+    // 6. Display Acknowledgement Voucher
     showReceiptModal(saved);
   } catch (err) {
-    showToast(err.message || "Failed to submit grievance", "error");
+    showToast(err.message || "Failed to register grievance.", "error");
   } finally {
     if (submitBtn) {
       submitBtn.disabled = false;
@@ -1257,17 +1526,20 @@ async function handleGrievanceSubmit(e) {
   }
 }
 
+// ==============================================================================
+// 11. ACKNOWLEDGEMENT RECEIPT VOUCHER
+// ==============================================================================
 function showReceiptModal(grievance) {
   const modal = document.getElementById("receipt-modal");
   if (!modal) return;
 
   document.getElementById("receipt-tracking-id").textContent = grievance.tracking_id;
-  document.getElementById("receipt-title").textContent = grievance.title;
+  document.getElementById("receipt-citizen-name").textContent = grievance.citizen_name;
+  document.getElementById("receipt-date").textContent = formatDate(grievance.created_at);
   document.getElementById("receipt-department").textContent = grievance.department_name;
   document.getElementById("receipt-priority").innerHTML = getPriorityBadgeHtml(grievance.priority);
   document.getElementById("receipt-location").textContent = `${grievance.location}, ${grievance.district}`;
-  document.getElementById("receipt-citizen-name").textContent = grievance.citizen_name;
-  document.getElementById("receipt-date").textContent = formatDate(grievance.created_at);
+  document.getElementById("receipt-title").textContent = grievance.title;
 
   modal.classList.remove("hidden");
 }
@@ -1278,175 +1550,220 @@ function closeReceiptModal() {
   navigate("my-grievances");
 }
 
+// ==============================================================================
+// 12. CITIZEN DASHBOARD ("My Grievances")
+// ==============================================================================
 function renderCitizenGrievances() {
+  if (!state.currentUser) return;
+
   const container = document.getElementById("citizen-grievances-list");
   if (!container) return;
 
-  if (!state.currentUser) {
-    container.innerHTML = `<div class="p-8 text-center text-slate-500">Please sign in to view your grievances.</div>`;
-    return;
-  }
+  const myGrievances = state.grievances.filter(
+    g => g.citizen_id === state.currentUser.id || g.citizen_email === state.currentUser.email
+  );
 
-  const myGrievances = state.allGrievances.filter(g => g.citizen_id === state.currentUser.id || g.citizen_email === state.currentUser.email);
+  // Metrics
+  const total = myGrievances.length;
+  const pending = myGrievances.filter(g => g.status === "Pending" || g.status === "In Progress").length;
+  const resolved = myGrievances.filter(g => g.status === "Resolved").length;
 
-  // Update Citizen summary counts
   const totalEl = document.getElementById("citizen-total-count");
   const pendingEl = document.getElementById("citizen-pending-count");
   const resolvedEl = document.getElementById("citizen-resolved-count");
 
-  if (totalEl) totalEl.textContent = myGrievances.length;
-  if (pendingEl) pendingEl.textContent = myGrievances.filter(g => g.status === "Pending" || g.status === "In Progress").length;
-  if (resolvedEl) resolvedEl.textContent = myGrievances.filter(g => g.status === "Resolved").length;
+  if (totalEl) totalEl.textContent = total;
+  if (pendingEl) pendingEl.textContent = pending;
+  if (resolvedEl) resolvedEl.textContent = resolved;
 
   if (myGrievances.length === 0) {
     container.innerHTML = `
-      <div class="bg-white rounded-xl border border-slate-200 p-12 text-center">
-        <div class="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-400">
-          <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+      <div class="bg-white rounded-2xl border-2 border-slate-200 p-12 text-center space-y-4">
+        <div class="w-14 h-14 bg-amber-50 text-amber-600 rounded-full flex items-center justify-center mx-auto text-2xl font-bold border border-amber-200">
+          📝
         </div>
-        <h3 class="text-lg font-bold text-slate-800 mb-1">No Grievances Lodged Yet</h3>
-        <p class="text-sm text-slate-500 max-w-md mx-auto mb-6">Have an issue in your locality? Register your first grievance and track each stage of redressal in real-time.</p>
-        <button onclick="navigate('file-grievance')" class="px-5 py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-semibold rounded-lg shadow-sm transition">
-          Lodge New Grievance
+        <h3 class="text-base font-bold text-slate-800">No Grievances Registered Yet</h3>
+        <p class="text-xs text-slate-500 max-w-sm mx-auto">
+          You have not submitted any civic grievances yet. If you have an issue with water, roads, power, or sanitation, lodge a grievance below.
+        </p>
+        <button onclick="navigate('file-grievance')" class="px-6 py-2.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-black uppercase tracking-wider rounded-xl shadow-md transition">
+          Lodge Your First Grievance
         </button>
       </div>
     `;
     return;
   }
 
-  let html = `<div class="space-y-4">`;
-  myGrievances.forEach(g => {
-    html += `
-      <div class="bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div class="space-y-2 flex-1">
-          <div class="flex flex-wrap items-center gap-2">
-            <span class="font-mono text-xs font-bold px-2.5 py-1 bg-slate-900 text-amber-400 rounded">${g.tracking_id}</span>
-            ${getStatusBadgeHtml(g.status)}
-            ${getPriorityBadgeHtml(g.priority)}
-            <span class="text-xs text-slate-400">• Filed ${getRelativeTime(g.created_at)}</span>
+  container.innerHTML = myGrievances
+    .map(g => {
+      const hasPhoto = g.image_url || g.attachment_url;
+      return `
+        <div class="bg-white rounded-2xl border-2 border-slate-200 p-5 sm:p-6 hover:border-amber-400 transition shadow-sm space-y-4">
+          <div class="flex flex-wrap justify-between items-start gap-3">
+            <div>
+              <div class="flex items-center space-x-2">
+                <span class="text-xs font-mono font-black text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                  ${g.tracking_id}
+                </span>
+                <span class="text-xs text-slate-400 font-medium">${formatDate(g.created_at)}</span>
+              </div>
+              <h3 class="text-base font-black text-slate-900 mt-1.5 font-emblem">${g.title}</h3>
+              <p class="text-xs text-slate-500 mt-0.5">
+                <strong>Department:</strong> ${g.department_name} • <strong>Location:</strong> ${g.location}, ${g.district}
+              </p>
+            </div>
+
+            <div class="flex items-center gap-2">
+              ${getStatusBadgeHtml(g.status)}
+              ${getPriorityBadgeHtml(g.priority)}
+            </div>
           </div>
-          <h3 class="text-base font-bold text-slate-900 leading-snug">${g.title}</h3>
-          <div class="flex flex-wrap items-center gap-y-1 gap-x-4 text-xs text-slate-500">
-            <span class="flex items-center">
-              <svg class="w-3.5 h-3.5 mr-1 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
-              ${g.department_name}
-            </span>
-            <span class="flex items-center">
-              <svg class="w-3.5 h-3.5 mr-1 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/></svg>
-              ${g.location}
-            </span>
-            ${g.assigned_official_name ? `
-              <span class="flex items-center text-sky-700 font-medium">
-                <svg class="w-3.5 h-3.5 mr-1 text-sky-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
-                Assigned: ${g.assigned_official_name}
-              </span>
-            ` : `<span class="text-slate-400 italic">Official not yet assigned</span>`}
+
+          <p class="text-xs text-slate-700 bg-slate-50 p-3 rounded-xl border border-slate-100 leading-relaxed">
+            ${g.description}
+          </p>
+
+          ${
+            hasPhoto
+              ? `
+            <div class="flex items-center space-x-3 pt-1">
+              <img src="${hasPhoto}" alt="Evidence thumbnail" class="w-12 h-12 rounded-lg object-cover border border-slate-200 cursor-pointer shadow-sm hover:scale-105 transition" onclick="zoomImage('${hasPhoto}')" />
+              <div class="text-[11px] text-slate-500">
+                <span class="font-bold text-slate-700">Attached Photographic Evidence</span> (Stored in Supabase: images)
+              </div>
+            </div>
+          `
+              : ""
+          }
+
+          ${
+            g.resolution_notes
+              ? `
+            <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-xs text-slate-800 space-y-1">
+              <div class="font-bold text-emerald-800 uppercase text-[10px] flex items-center">
+                ✓ Official Action Report:
+              </div>
+              <p class="italic">${g.resolution_notes}</p>
+            </div>
+          `
+              : ""
+          }
+
+          <div class="flex items-center justify-between pt-3 border-t border-slate-100 text-xs">
+            <div class="text-slate-500 text-[11px]">
+              Assigned Official: <strong>${g.assigned_official_name || "Grievance Intake Desk"}</strong>
+            </div>
+            <div class="flex items-center space-x-2">
+              <button onclick="showReceiptModal(${JSON.stringify(g).replace(/"/g, "&quot;")})" class="px-3 py-1.5 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 font-bold text-[11px] transition">
+                Print Slip
+              </button>
+              <button onclick="openTimelineModal('${g.id}')" class="px-3.5 py-1.5 rounded-lg bg-gov-navy-900 hover:bg-gov-navy-950 text-white font-bold text-[11px] transition">
+                View Timeline History
+              </button>
+            </div>
           </div>
         </div>
-        <div class="flex items-center gap-2 self-start md:self-center">
-          <button onclick="openTimelineModal('${g.id}')" class="px-3.5 py-2 text-xs font-semibold rounded-lg bg-slate-800 text-white hover:bg-slate-900 transition flex items-center">
-            <svg class="w-3.5 h-3.5 mr-1.5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-            View Lifecycle Timeline
-          </button>
-        </div>
-      </div>
-    `;
-  });
-  html += `</div>`;
-  container.innerHTML = html;
+      `;
+    })
+    .join("");
 }
 
 // ==============================================================================
-// 10. OFFICIAL & ADMIN DASHBOARD
+// 13. DEPARTMENT OFFICIAL & ADMIN DASHBOARD
 // ==============================================================================
 function renderAdminDashboard() {
+  if (!state.currentUser) return;
+
   const tableBody = document.getElementById("admin-grievances-table-body");
   if (!tableBody) return;
 
-  // Filter list
-  let filtered = [...state.allGrievances];
+  // Header banner info
+  const deptBanner = document.getElementById("official-dept-banner");
+  if (deptBanner) {
+    if (state.currentUser.role === "official") {
+      const d = state.departments.find(dep => dep.id === state.currentUser.department_id);
+      deptBanner.innerHTML = `Logged in as: <strong class="text-white">${state.currentUser.full_name}</strong> • Allocated Department: <strong class="text-amber-400">${d ? d.name : "Civic Board"}</strong> (${state.currentUser.official_designation || "Executive Officer"})`;
+      deptBanner.classList.remove("hidden");
+    } else {
+      deptBanner.innerHTML = `Logged in as: <strong class="text-white">${state.currentUser.full_name}</strong> • <strong class="text-amber-400">Apex Administrative Directorate</strong> (Complete Multi-Department Access)`;
+      deptBanner.classList.remove("hidden");
+    }
+  }
 
-  // If role is Department Official, highlight or default to their department
-  if (state.currentUser && state.currentUser.role === "official" && state.currentUser.department_id) {
-    const deptPill = document.getElementById("official-dept-banner");
-    if (deptPill) {
-      const myDept = state.departments.find(d => d.id === state.currentUser.department_id);
-      deptPill.innerHTML = `Showing Department Queue: <strong class="text-amber-400">${myDept ? myDept.name : "My Department"}</strong>`;
-      deptPill.classList.remove("hidden");
+  // Filter values
+  const deptFilter = document.getElementById("filter-department").value;
+  const statusFilter = document.getElementById("filter-status").value;
+  const priorityFilter = document.getElementById("filter-priority").value;
+  const searchKeyword = (document.getElementById("filter-search").value || "").toLowerCase().trim();
+
+  // If official, default filter to their assigned department
+  let baseList = state.grievances;
+  if (state.currentUser.role === "official" && state.currentUser.department_id) {
+    const filterDeptEl = document.getElementById("filter-department");
+    if (filterDeptEl && filterDeptEl.value === "all") {
+      filterDeptEl.value = state.currentUser.department_id;
     }
   }
 
   // Apply filters
-  if (state.currentFilter.department !== "all") {
-    filtered = filtered.filter(g => g.department_id === state.currentFilter.department);
-  }
+  const filtered = baseList.filter(g => {
+    // Dept filter
+    if (deptFilter !== "all" && g.department_id !== deptFilter) return false;
+    // Status filter
+    if (statusFilter !== "all" && g.status !== statusFilter) return false;
+    // Priority filter
+    if (priorityFilter !== "all" && g.priority !== priorityFilter) return false;
+    // Search keyword
+    if (searchKeyword) {
+      const targetStr = `${g.tracking_id} ${g.title} ${g.citizen_name} ${g.location} ${g.district} ${g.description}`.toLowerCase();
+      if (!targetStr.includes(searchKeyword)) return false;
+    }
+    return true;
+  });
 
-  if (state.currentFilter.status !== "all") {
-    filtered = filtered.filter(g => g.status === state.currentFilter.status);
-  }
-
-  if (state.currentFilter.priority !== "all") {
-    filtered = filtered.filter(g => g.priority === state.currentFilter.priority);
-  }
-
-  if (state.currentFilter.search) {
-    const q = state.currentFilter.search.toLowerCase();
-    filtered = filtered.filter(
-      g =>
-        g.tracking_id.toLowerCase().includes(q) ||
-        g.title.toLowerCase().includes(q) ||
-        g.citizen_name.toLowerCase().includes(q) ||
-        g.location.toLowerCase().includes(q)
-    );
-  }
-
-  // Update Overview Metrics Cards
-  const total = state.allGrievances.length;
-  const pending = state.allGrievances.filter(g => g.status === "Pending").length;
-  const inProgress = state.allGrievances.filter(g => g.status === "In Progress").length;
-  const resolved = state.allGrievances.filter(g => g.status === "Resolved").length;
-  const rejected = state.allGrievances.filter(g => g.status === "Rejected").length;
+  // Calculate Metrics
+  const total = baseList.length;
+  const pending = baseList.filter(g => g.status === "Pending").length;
+  const inProgress = baseList.filter(g => g.status === "In Progress").length;
+  const resolved = baseList.filter(g => g.status === "Resolved").length;
+  const rejected = baseList.filter(g => g.status === "Rejected").length;
+  const rate = total > 0 ? Math.round((resolved / total) * 100) : 0;
 
   document.getElementById("metric-total").textContent = total;
   document.getElementById("metric-pending").textContent = pending;
   document.getElementById("metric-inprogress").textContent = inProgress;
   document.getElementById("metric-resolved").textContent = resolved;
   document.getElementById("metric-rejected").textContent = rejected;
-
-  const rate = total > 0 ? Math.round((resolved / total) * 100) : 0;
   document.getElementById("metric-rate").textContent = `${rate}%`;
 
-  // Render Table Rows
   if (filtered.length === 0) {
     tableBody.innerHTML = `
       <tr>
-        <td colspan="7" class="px-6 py-10 text-center text-slate-500">
-          <p class="text-sm">No grievances match the selected filter criteria.</p>
+        <td colspan="7" class="px-6 py-12 text-center text-slate-400">
+          No citizen grievance records match the current filter query.
         </td>
       </tr>
     `;
     return;
   }
 
-  let rows = "";
-  filtered.forEach(g => {
-    rows += `
-      <tr class="hover:bg-slate-50 transition border-b border-slate-100">
-        <td class="px-4 py-3.5 text-xs font-mono font-bold text-slate-900">
-          <a href="javascript:void(0)" onclick="openTimelineModal('${g.id}')" class="text-amber-600 hover:underline">
+  tableBody.innerHTML = filtered
+    .map(g => {
+      return `
+      <tr class="hover:bg-slate-50/80 transition">
+        <td class="px-4 py-3.5 whitespace-nowrap">
+          <span class="font-mono font-black text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
             ${g.tracking_id}
-          </a>
+          </span>
+          <div class="text-[10px] text-slate-400 mt-1">${formatDate(g.created_at)}</div>
         </td>
-        <td class="px-4 py-3.5">
-          <div class="text-sm font-semibold text-slate-900 line-clamp-1">${g.title}</div>
-          <div class="text-xs text-slate-500 flex items-center mt-0.5">
-            <span class="font-medium text-slate-700">${g.citizen_name}</span>
-            <span class="mx-1">•</span>
-            <span>${g.citizen_phone || "No phone"}</span>
-          </div>
+        <td class="px-4 py-3.5 max-w-xs">
+          <div class="font-bold text-slate-900 truncate" title="${g.title}">${g.title}</div>
+          <div class="text-[11px] text-slate-500 mt-0.5">${g.citizen_name} • <span class="font-mono">${g.citizen_phone || ""}</span></div>
         </td>
-        <td class="px-4 py-3.5 text-xs text-slate-600 font-medium">
-          ${g.department_name}
+        <td class="px-4 py-3.5 whitespace-nowrap">
+          <span class="text-xs font-bold text-slate-800">${g.department_name}</span>
+          <div class="text-[10px] text-slate-400">${g.district}</div>
         </td>
         <td class="px-4 py-3.5 whitespace-nowrap">
           ${getPriorityBadgeHtml(g.priority)}
@@ -1454,223 +1771,202 @@ function renderAdminDashboard() {
         <td class="px-4 py-3.5 whitespace-nowrap">
           ${getStatusBadgeHtml(g.status)}
         </td>
-        <td class="px-4 py-3.5 text-xs text-slate-600 whitespace-nowrap">
-          ${g.assigned_official_name ? `
-            <span class="inline-flex items-center text-slate-800 font-medium">
-              <span class="w-1.5 h-1.5 mr-1.5 rounded-full bg-emerald-500"></span>
-              ${g.assigned_official_name}
-            </span>
-          ` : `<span class="text-slate-400 italic">Unassigned</span>`}
+        <td class="px-4 py-3.5 whitespace-nowrap text-slate-600">
+          <div class="font-semibold text-slate-800 text-[11px]">${g.assigned_official_name || "Unassigned"}</div>
         </td>
-        <td class="px-4 py-3.5 text-right whitespace-nowrap">
-          <button onclick="openUpdateModal('${g.id}')" class="px-3 py-1.5 text-xs font-semibold rounded bg-amber-600 text-white hover:bg-amber-700 shadow-sm transition">
-            Action / Update
+        <td class="px-4 py-3.5 whitespace-nowrap text-right space-x-1">
+          <button onclick="openUpdateModal('${g.id}')" class="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-bold text-[11px] rounded-lg shadow-sm transition">
+            Take Action
+          </button>
+          <button onclick="openTimelineModal('${g.id}')" class="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-[11px] rounded-lg transition" title="Inspect Timeline">
+            Logs
           </button>
         </td>
       </tr>
     `;
-  });
-  tableBody.innerHTML = rows;
+    })
+    .join("");
 }
 
-// ==============================================================================
-// 11. UPDATE GRIEVANCE MODAL & LOG ENTRY
-// ==============================================================================
 function openUpdateModal(grievanceId) {
-  const grievance = state.allGrievances.find(g => g.id === grievanceId);
-  if (!grievance) return;
+  const g = state.grievances.find(item => item.id === grievanceId);
+  if (!g) return;
 
-  state.selectedGrievanceForModal = grievance;
-  const modal = document.getElementById("update-grievance-modal");
-  if (!modal) return;
+  state.activeUpdateGrievanceId = grievanceId;
 
-  document.getElementById("modal-update-tracking-id").textContent = grievance.tracking_id;
-  document.getElementById("modal-update-title").textContent = grievance.title;
-  document.getElementById("modal-update-dept").textContent = grievance.department_name;
-  document.getElementById("modal-update-citizen").textContent = `${grievance.citizen_name} (${grievance.citizen_phone})`;
-  document.getElementById("modal-update-location").textContent = `${grievance.location}, ${grievance.district}`;
-  document.getElementById("modal-update-description").textContent = grievance.description;
+  document.getElementById("modal-update-tracking-id").textContent = g.tracking_id;
+  document.getElementById("modal-update-title").textContent = g.title;
+  document.getElementById("modal-update-dept").textContent = g.department_name;
+  document.getElementById("modal-update-citizen").textContent = `${g.citizen_name} (${g.citizen_email})`;
+  document.getElementById("modal-update-location").textContent = `${g.location}, ${g.district}`;
+  document.getElementById("modal-update-description").textContent = `"${g.description}"`;
 
-  // Set current status
-  document.getElementById("update-status-select").value = grievance.status;
+  document.getElementById("update-status-select").value = g.status;
+  document.getElementById("update-resolution-notes").value = g.resolution_notes || "";
 
-  // Populate official assignment options
+  // Populate assigned official select
   const officialSelect = document.getElementById("update-assigned-official");
-  officialSelect.innerHTML = `<option value="">-- Leave Unassigned --</option>`;
-  state.officials.forEach(off => {
-    const isSelected = grievance.assigned_official_id === off.id ? "selected" : "";
-    officialSelect.innerHTML += `<option value="${off.id}" ${isSelected}>${off.full_name} (${off.role})</option>`;
-  });
+  if (officialSelect) {
+    const deptOfficials = state.officials.filter(
+      o => !o.department_id || o.department_id === g.department_id
+    );
 
-  // Pre-fill existing resolution note if any
-  document.getElementById("update-resolution-notes").value = grievance.resolution_notes || "";
+    officialSelect.innerHTML =
+      `<option value="">-- Leave Unassigned / Intake Pool --</option>` +
+      deptOfficials
+        .map(
+          o =>
+            `<option value="${o.id}" ${o.id === g.assigned_official_id ? "selected" : ""}>${o.full_name} (${o.official_designation || "Officer"})</option>`
+        )
+        .join("");
+  }
 
-  modal.classList.remove("hidden");
+  const modal = document.getElementById("update-grievance-modal");
+  if (modal) modal.classList.remove("hidden");
 }
 
 function closeUpdateModal() {
   const modal = document.getElementById("update-grievance-modal");
   if (modal) modal.classList.add("hidden");
-  state.selectedGrievanceForModal = null;
+  state.activeUpdateGrievanceId = null;
 }
 
 async function handleSaveGrievanceUpdate() {
-  const g = state.selectedGrievanceForModal;
+  if (!state.activeUpdateGrievanceId) return;
+
+  const g = state.grievances.find(item => item.id === state.activeUpdateGrievanceId);
   if (!g) return;
 
   const newStatus = document.getElementById("update-status-select").value;
   const assignedOfficialId = document.getElementById("update-assigned-official").value || null;
-  const remarks = document.getElementById("update-resolution-notes").value.trim();
+  const resolutionNotes = document.getElementById("update-resolution-notes").value.trim();
 
-  let assignedOfficialName = null;
+  let assignedOfficialName = g.assigned_official_name;
   if (assignedOfficialId) {
-    const off = state.officials.find(o => o.id === assignedOfficialId);
-    assignedOfficialName = off ? off.full_name : null;
+    const officialObj = state.officials.find(o => o.id === assignedOfficialId);
+    assignedOfficialName = officialObj ? officialObj.full_name : null;
   }
 
   const updates = {
     status: newStatus,
     assigned_official_id: assignedOfficialId,
     assigned_official_name: assignedOfficialName,
-    resolution_notes: remarks,
-    resolved_at: newStatus === "Resolved" ? new Date().toISOString() : null,
-    updated_at: new Date().toISOString()
+    resolution_notes: resolutionNotes || g.resolution_notes,
+    resolved_at: newStatus === "Resolved" ? new Date().toISOString() : g.resolved_at
   };
 
   const saveBtn = document.getElementById("btn-save-grievance-update");
   if (saveBtn) {
     saveBtn.disabled = true;
-    saveBtn.innerHTML = `Saving Updates...`;
+    saveBtn.innerHTML = `<svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg> Saving & Logging...`;
   }
 
   try {
-    // 1. Update Grievances Table
+    // 1. Update Grievance in Supabase
     await db.updateGrievance(g.id, updates);
 
-    // 2. Automatically insert record into grievance_logs
-    const actorName = state.currentUser ? state.currentUser.full_name : "Department Official";
-    const actorRole = state.currentUser ? (state.currentUser.role === "admin" ? "Admin" : "Department Official") : "Department Official";
-
-    let actionName = "Status Updated";
-    if (g.status !== newStatus) {
-      actionName = newStatus === "Resolved" ? "Grievance Resolved" : (newStatus === "Rejected" ? "Grievance Rejected" : `Status Changed to ${newStatus}`);
-    } else if (g.assigned_official_id !== assignedOfficialId) {
-      actionName = "Official Reassigned";
-    }
+    // 2. Append new audit log to grievance_logs
+    let actionDesc = "Status Updated";
+    if (newStatus === "Resolved") actionDesc = "Grievance Resolved";
+    else if (newStatus === "Rejected") actionDesc = "Grievance Rejected";
+    else if (assignedOfficialName && assignedOfficialName !== g.assigned_official_name) actionDesc = "Official Assigned";
 
     const logEntry = {
       id: `log_${Date.now()}`,
       grievance_id: g.id,
       tracking_id: g.tracking_id,
-      action: actionName,
+      action: actionDesc,
       previous_status: g.status,
       new_status: newStatus,
-      performed_by_name: actorName,
-      performed_by_role: actorRole,
-      remarks: remarks || `Status transitioned from ${g.status} to ${newStatus}.`,
+      performed_by_name: state.currentUser.full_name,
+      performed_by_role: state.currentUser.role === "admin" ? "Administrative Officer" : "Department Official",
+      remarks: resolutionNotes || `Status updated from ${g.status} to ${newStatus}.`,
       created_at: new Date().toISOString()
     };
-
     await db.addLog(logEntry);
 
-    // Trigger celebration if resolved
-    if (newStatus === "Resolved") {
-      triggerConfetti();
-    }
-
-    showToast(`Grievance ${g.tracking_id} updated to [${newStatus}]!`, "success");
+    showToast(`Docket ${g.tracking_id} updated successfully and audit log saved!`, "success");
     closeUpdateModal();
-
     await refreshData();
-    renderAdminDashboard();
   } catch (err) {
-    showToast(err.message || "Failed to update grievance", "error");
+    showToast(err.message || "Failed to update grievance.", "error");
   } finally {
     if (saveBtn) {
       saveBtn.disabled = false;
-      saveBtn.textContent = "Save Changes & Log Audit Entry";
+      saveBtn.textContent = "Save Action & Append Audit Log";
     }
   }
 }
 
 // ==============================================================================
-// 12. LIFECYCLE TIMELINE MODAL (From grievance_logs)
+// 14. TIMELINE AUDIT MODAL (grievance_logs)
 // ==============================================================================
 async function openTimelineModal(grievanceId) {
-  let grievance = state.allGrievances.find(g => g.id === grievanceId);
-  if (!grievance) {
-    // Attempt lookup by tracking id if needed
-    grievance = await db.getGrievanceByTrackingId(grievanceId);
-  }
-  if (!grievance) return;
+  const g = state.grievances.find(item => item.id === grievanceId);
+  if (!g) return;
 
   const modal = document.getElementById("timeline-modal");
   if (!modal) return;
 
-  document.getElementById("modal-timeline-tracking-id").textContent = grievance.tracking_id;
-  document.getElementById("modal-timeline-title").textContent = grievance.title;
-  document.getElementById("modal-timeline-status-badge").innerHTML = getStatusBadgeHtml(grievance.status);
-  document.getElementById("modal-timeline-priority-badge").innerHTML = getPriorityBadgeHtml(grievance.priority);
-  document.getElementById("modal-timeline-dept").textContent = grievance.department_name;
-  document.getElementById("modal-timeline-location").textContent = `${grievance.location}, ${grievance.district}`;
-  document.getElementById("modal-timeline-citizen").textContent = state.currentUser ? grievance.citizen_name : maskName(grievance.citizen_name);
-  document.getElementById("modal-timeline-desc").textContent = grievance.description;
+  document.getElementById("modal-timeline-tracking-id").textContent = g.tracking_id;
+  document.getElementById("modal-timeline-title").textContent = g.title;
+  document.getElementById("modal-timeline-dept").textContent = g.department_name;
+  document.getElementById("modal-timeline-citizen").textContent = maskName(g.citizen_name);
+  document.getElementById("modal-timeline-location").textContent = `${g.location}, ${g.district}`;
+  document.getElementById("modal-timeline-desc").textContent = `"${g.description}"`;
+
+  document.getElementById("modal-timeline-status-badge").innerHTML = getStatusBadgeHtml(g.status);
+  document.getElementById("modal-timeline-priority-badge").innerHTML = getPriorityBadgeHtml(g.priority);
 
   const container = document.getElementById("timeline-logs-container");
-  container.innerHTML = `<div class="p-4 text-center text-slate-400">Loading audit trail logs...</div>`;
+  container.innerHTML = `<div class="text-center py-4 text-xs text-slate-400">Loading verified timeline from grievance_logs...</div>`;
 
   modal.classList.remove("hidden");
 
-  // Load logs
-  const logs = await db.getLogs(grievance.id);
+  // Fetch verified logs
+  const logs = await db.getLogs(g.id);
 
   if (logs.length === 0) {
-    container.innerHTML = `<div class="p-4 text-center text-slate-400">No logs found for this grievance.</div>`;
+    container.innerHTML = `<div class="text-center py-6 text-xs text-slate-400">No logs found for this docket.</div>`;
     return;
   }
 
-  let html = `<div class="relative pl-6 space-y-6">`;
-  logs.forEach((log, index) => {
-    const isLatest = index === logs.length - 1;
-    const nodeColor =
-      log.new_status === "Resolved"
-        ? "bg-emerald-500 ring-4 ring-emerald-100"
-        : log.new_status === "In Progress"
-        ? "bg-blue-500 ring-4 ring-blue-100"
-        : log.new_status === "Rejected"
-        ? "bg-rose-500 ring-4 ring-rose-100"
-        : "bg-amber-500 ring-4 ring-amber-100";
+  container.innerHTML = `
+    <div class="relative pl-6 space-y-6">
+      ${logs
+        .map((log, index) => {
+          const isLast = index === logs.length - 1;
+          const statusCls =
+            log.new_status === "Resolved"
+              ? "bg-emerald-500"
+              : log.new_status === "In Progress"
+              ? "bg-sky-500"
+              : log.new_status === "Rejected"
+              ? "bg-rose-500"
+              : "bg-amber-500";
 
-    html += `
-      <div class="relative pb-2 timeline-item">
-        <div class="timeline-stem"></div>
-        <div class="absolute -left-6 top-1 w-4 h-4 rounded-full ${nodeColor} z-10"></div>
-        <div class="bg-slate-50 border border-slate-200 rounded-lg p-3.5 shadow-sm">
-          <div class="flex flex-wrap items-center justify-between gap-2 mb-1.5">
-            <div class="font-bold text-xs text-slate-900">${log.action}</div>
-            <div class="text-[11px] text-slate-400 font-mono">${formatDate(log.created_at)}</div>
-          </div>
-          <div class="text-xs text-slate-600 mb-2">
-            By <span class="font-semibold text-slate-800">${log.performed_by_name}</span>
-            <span class="text-slate-400">(${log.performed_by_role})</span>
-          </div>
-          ${log.remarks ? `
-            <div class="text-xs text-slate-700 bg-white border border-slate-200 rounded p-2.5 italic">
-              "${log.remarks}"
+          return `
+            <div class="timeline-item relative">
+              ${!isLast ? `<div class="timeline-stem"></div>` : ""}
+              <div class="absolute -left-6 top-1 w-3.5 h-3.5 rounded-full ${statusCls} border-2 border-white shadow"></div>
+              
+              <div class="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm text-xs space-y-1">
+                <div class="flex items-center justify-between">
+                  <span class="font-extrabold text-slate-900">${log.action}</span>
+                  <span class="text-[10px] text-slate-400 font-mono">${formatDate(log.created_at)}</span>
+                </div>
+                <div class="text-slate-600">
+                  By: <strong class="text-slate-800">${log.performed_by_name}</strong> 
+                  <span class="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 font-medium">${log.performed_by_role}</span>
+                </div>
+                ${log.remarks ? `<p class="text-slate-700 italic pt-1 border-t border-slate-100 mt-1">${log.remarks}</p>` : ""}
+              </div>
             </div>
-          ` : ""}
-          ${log.new_status ? `
-            <div class="mt-2 flex items-center text-xs">
-              <span class="text-slate-400 mr-1.5">State:</span>
-              ${getStatusBadgeHtml(log.new_status)}
-            </div>
-          ` : ""}
-        </div>
-      </div>
-    `;
-  });
-  html += `</div>`;
-  container.innerHTML = html;
+          `;
+        })
+        .join("")}
+    </div>
+  `;
 }
 
 function closeTimelineModal() {
@@ -1679,265 +1975,510 @@ function closeTimelineModal() {
 }
 
 // ==============================================================================
-// 13. PUBLIC TRACKING & SEARCH
+// 15. PUBLIC TRACKING & SEARCH (No Login Required)
 // ==============================================================================
 async function handlePublicSearch(trackingId) {
-  if (!trackingId || !trackingId.trim()) {
-    showToast("Please enter a valid Grievance Tracking ID", "error");
+  const cleanId = (trackingId || "").trim().toUpperCase();
+  if (!cleanId) {
+    showToast("Please enter an official tracking code (e.g. GRV-2026-1001)", "info");
     return;
   }
 
-  const cleanId = trackingId.trim().toUpperCase();
-  const resultCard = document.getElementById("public-track-result");
-  const notFoundCard = document.getElementById("public-track-notfound");
-  const trackInput = document.getElementById("public-tracking-input");
-
-  if (trackInput) trackInput.value = cleanId;
-
-  // Make sure view is visible
-  navigate("public-track");
-
-  const grievance = await db.getGrievanceByTrackingId(cleanId);
-
-  if (!grievance) {
-    if (resultCard) resultCard.classList.add("hidden");
-    if (notFoundCard) {
-      notFoundCard.classList.remove("hidden");
-      document.getElementById("notfound-id").textContent = cleanId;
-    }
-    return;
+  const trackBtn = document.getElementById("public-track-btn");
+  if (trackBtn) {
+    trackBtn.disabled = true;
+    trackBtn.innerHTML = `<svg class="animate-spin h-3.5 w-3.5 text-white inline" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg>`;
   }
 
-  if (notFoundCard) notFoundCard.classList.add("hidden");
-  if (resultCard) {
-    resultCard.classList.remove("hidden");
+  try {
+    const g = await db.getGrievanceByTrackingId(cleanId);
+    state.activeTrackingGrievance = g;
 
-    document.getElementById("track-res-id").textContent = grievance.tracking_id;
-    document.getElementById("track-res-title").textContent = grievance.title;
-    document.getElementById("track-res-status").innerHTML = getStatusBadgeHtml(grievance.status);
-    document.getElementById("track-res-priority").innerHTML = getPriorityBadgeHtml(grievance.priority);
-    document.getElementById("track-res-dept").textContent = grievance.department_name;
-    document.getElementById("track-res-date").textContent = formatDate(grievance.created_at);
-    document.getElementById("track-res-location").textContent = `${grievance.location}, ${grievance.district}`;
-    document.getElementById("track-res-citizen").textContent = maskName(grievance.citizen_name);
-    document.getElementById("track-res-desc").textContent = grievance.description;
+    const resultCard = document.getElementById("public-track-result");
+    const notfoundCard = document.getElementById("public-track-notfound");
 
-    // Load Timeline into public result
-    const logsContainer = document.getElementById("track-res-timeline");
-    logsContainer.innerHTML = `<div class="p-3 text-xs text-slate-400">Loading audit trail...</div>`;
+    if (g) {
+      if (notfoundCard) notfoundCard.classList.add("hidden");
+      if (resultCard) resultCard.classList.remove("hidden");
 
-    const logs = await db.getLogs(grievance.id);
-    if (logs.length === 0) {
-      logsContainer.innerHTML = `<div class="text-xs text-slate-400">No logs found.</div>`;
-    } else {
-      let lHtml = `<div class="space-y-3">`;
-      logs.forEach(log => {
-        lHtml += `
-          <div class="border-l-2 border-amber-500 pl-3 py-1">
-            <div class="flex justify-between items-center text-xs">
-              <span class="font-bold text-slate-800">${log.action}</span>
-              <span class="text-slate-400 text-[10px] font-mono">${formatDate(log.created_at)}</span>
-            </div>
-            <div class="text-xs text-slate-600 mt-0.5">${log.remarks || "Updated by civic authority."}</div>
+      document.getElementById("track-res-id").textContent = g.tracking_id;
+      document.getElementById("track-res-title").textContent = g.title;
+      document.getElementById("track-res-dept").textContent = g.department_name;
+      document.getElementById("track-res-date").textContent = formatDate(g.created_at);
+      document.getElementById("track-res-location").textContent = `${g.location}, ${g.district}`;
+      document.getElementById("track-res-citizen").textContent = maskName(g.citizen_name);
+      document.getElementById("track-res-desc").textContent = g.description;
+
+      document.getElementById("track-res-status").innerHTML = getStatusBadgeHtml(g.status);
+      document.getElementById("track-res-priority").innerHTML = getPriorityBadgeHtml(g.priority);
+
+      // Photographic Evidence Display
+      const photoContainer = document.getElementById("track-res-photo-container");
+      const photoImg = document.getElementById("track-res-img");
+      const photoUrl = g.image_url || g.attachment_url;
+      if (photoUrl && photoContainer && photoImg) {
+        photoImg.src = photoUrl;
+        photoContainer.classList.remove("hidden");
+      } else if (photoContainer) {
+        photoContainer.classList.add("hidden");
+      }
+
+      // Resolution Report
+      const resContainer = document.getElementById("track-res-resolution-container");
+      if (g.resolution_notes && resContainer) {
+        document.getElementById("track-res-resolution-notes").textContent = `"${g.resolution_notes}"`;
+        document.getElementById("track-res-official").textContent = g.assigned_official_name || "Assigned Officer";
+        document.getElementById("track-res-resolved-at").textContent = formatDate(g.resolved_at || g.updated_at);
+        resContainer.classList.remove("hidden");
+      } else if (resContainer) {
+        resContainer.classList.add("hidden");
+      }
+
+      // Timeline Logs
+      const timelineContainer = document.getElementById("track-res-timeline");
+      timelineContainer.innerHTML = `<div class="text-xs text-slate-400 py-3 text-center">Loading audit trail...</div>`;
+
+      const logs = await db.getLogs(g.id);
+      if (logs.length === 0) {
+        timelineContainer.innerHTML = `<div class="text-xs text-slate-400 py-3 text-center">Initial registration recorded. Further departmental action pending.</div>`;
+      } else {
+        timelineContainer.innerHTML = `
+          <div class="relative pl-6 space-y-5">
+            ${logs
+              .map((l, idx) => {
+                const isLast = idx === logs.length - 1;
+                const statusCls =
+                  l.new_status === "Resolved"
+                    ? "bg-emerald-500"
+                    : l.new_status === "In Progress"
+                    ? "bg-sky-500"
+                    : l.new_status === "Rejected"
+                    ? "bg-rose-500"
+                    : "bg-amber-500";
+
+                return `
+                  <div class="timeline-item relative">
+                    ${!isLast ? `<div class="timeline-stem"></div>` : ""}
+                    <div class="absolute -left-6 top-1 w-3.5 h-3.5 rounded-full ${statusCls} border-2 border-white shadow"></div>
+                    <div class="bg-white p-3.5 rounded-xl border border-slate-200 text-xs shadow-sm">
+                      <div class="flex justify-between items-center mb-1">
+                        <span class="font-extrabold text-slate-900">${l.action}</span>
+                        <span class="text-[10px] text-slate-400 font-mono">${formatDate(l.created_at)}</span>
+                      </div>
+                      <div class="text-slate-600 text-[11px]">
+                        Recorded by: <strong>${l.performed_by_name}</strong> (${l.performed_by_role})
+                      </div>
+                      ${l.remarks ? `<p class="italic text-slate-700 mt-1 border-t border-slate-100 pt-1">${l.remarks}</p>` : ""}
+                    </div>
+                  </div>
+                `;
+              })
+              .join("")}
           </div>
         `;
-      });
-      lHtml += `</div>`;
-      logsContainer.innerHTML = lHtml;
+      }
+
+      resultCard.scrollIntoView({ behavior: "smooth", block: "start" });
+    } else {
+      if (resultCard) resultCard.classList.add("hidden");
+      if (notfoundCard) {
+        notfoundCard.classList.remove("hidden");
+        document.getElementById("notfound-id").textContent = cleanId;
+        notfoundCard.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    }
+  } catch (err) {
+    showToast(err.message || "Error searching grievance record.", "error");
+  } finally {
+    if (trackBtn) {
+      trackBtn.disabled = false;
+      trackBtn.textContent = "Search";
     }
   }
 }
 
-// Quick Try Demo Search
-function tryDemoTracking(demoId) {
-  const input = document.getElementById("hero-tracking-input") || document.getElementById("public-tracking-input");
-  if (input) input.value = demoId;
-  handlePublicSearch(demoId);
+function printCurrentTrackingGrievance() {
+  if (state.activeTrackingGrievance) {
+    showReceiptModal(state.activeTrackingGrievance);
+  }
 }
 
 // ==============================================================================
-// 14. PUBLIC ANALYTICS & CIVIC TRANSPARENCY
+// 16. PUBLIC GRIEVANCE ARCHIVE (Resolved Cases Feed)
+// ==============================================================================
+function renderArchiveFeed() {
+  const container = document.getElementById("archive-feed-container");
+  if (!container) return;
+
+  const deptFilter = document.getElementById("archive-dept-filter") ? document.getElementById("archive-dept-filter").value : "all";
+  const search = document.getElementById("archive-search-input") ? (document.getElementById("archive-search-input").value || "").toLowerCase().trim() : "";
+
+  const resolvedCases = state.grievances.filter(g => g.status === "Resolved");
+
+  const filtered = resolvedCases.filter(g => {
+    if (deptFilter !== "all" && g.department_id !== deptFilter) return false;
+    if (search) {
+      const text = `${g.tracking_id} ${g.title} ${g.location} ${g.description} ${g.resolution_notes || ""}`.toLowerCase();
+      if (!text.includes(search)) return false;
+    }
+    return true;
+  });
+
+  if (filtered.length === 0) {
+    container.innerHTML = `
+      <div class="col-span-full bg-white rounded-2xl border-2 border-slate-200 p-12 text-center text-slate-400">
+        No resolved grievance dockets match this filter criteria.
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = filtered
+    .map(g => {
+      const photo = g.image_url || g.attachment_url;
+      return `
+        <div class="bg-white rounded-2xl border-2 border-slate-200 overflow-hidden shadow-sm hover:shadow-md transition flex flex-col justify-between">
+          <div>
+            ${
+              photo
+                ? `
+              <div class="relative h-44 w-full bg-slate-900 overflow-hidden cursor-pointer group" onclick="zoomImage('${photo}')">
+                <img src="${photo}" alt="Resolved grievance evidence" class="w-full h-full object-cover group-hover:scale-105 transition duration-300" />
+                <div class="absolute top-3 left-3 bg-gov-navy-950/80 text-white font-mono text-[10px] px-2 py-0.5 rounded font-bold border border-slate-700">
+                  ${g.tracking_id}
+                </div>
+                <div class="absolute bottom-2 right-2 bg-emerald-900/90 text-emerald-300 text-[10px] px-2 py-0.5 rounded font-black border border-emerald-700 flex items-center">
+                  ✓ Verified Resolution
+                </div>
+              </div>
+            `
+                : `
+              <div class="h-24 bg-gradient-to-r from-gov-navy-900 to-slate-900 p-4 flex items-center justify-between text-white">
+                <span class="font-mono text-xs font-black text-amber-400">${g.tracking_id}</span>
+                <span class="bg-emerald-900/80 text-emerald-300 text-[10px] px-2 py-0.5 rounded font-bold border border-emerald-700">✓ Resolved</span>
+              </div>
+            `
+            }
+
+            <div class="p-5 space-y-3 text-xs">
+              <div>
+                <span class="inline-block text-[10px] font-extrabold uppercase text-amber-700 bg-amber-50 px-2 py-0.5 rounded mb-1">
+                  ${g.department_name}
+                </span>
+                <h3 class="text-sm font-black text-slate-900 font-emblem leading-snug">${g.title}</h3>
+                <p class="text-[11px] text-slate-400 mt-0.5">Location: ${g.location}, ${g.district}</p>
+              </div>
+
+              <div class="bg-slate-50 p-3 rounded-xl border border-slate-100 text-slate-600 leading-relaxed text-[11px]">
+                <strong class="text-slate-800 block text-[10px] uppercase">Reported Issue:</strong>
+                ${g.description}
+              </div>
+
+              ${
+                g.resolution_notes
+                  ? `
+                <div class="bg-emerald-50/70 border border-emerald-200 rounded-xl p-3 text-slate-800 text-[11px] leading-relaxed">
+                  <strong class="text-emerald-900 block text-[10px] uppercase flex items-center mb-0.5">
+                    Official Remediation Taken:
+                  </strong>
+                  ${g.resolution_notes}
+                </div>
+              `
+                  : ""
+              }
+            </div>
+          </div>
+
+          <div class="p-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
+            <div>Officer: <strong class="text-slate-700">${g.assigned_official_name || "Civic Officer"}</strong></div>
+            <button onclick="handlePublicSearch('${g.tracking_id}')" class="text-amber-700 hover:text-amber-800 font-bold underline">
+              View Audit Log &rarr;
+            </button>
+          </div>
+        </div>
+      `;
+    })
+    .join("");
+}
+
+// ==============================================================================
+// 17. HOME SCREEN STATS & DIRECTORY
 // ==============================================================================
 function renderHomeStats() {
-  const grievances = state.allGrievances;
-  const total = grievances.length;
-  const resolved = grievances.filter(g => g.status === "Resolved").length;
-  const inProgress = grievances.filter(g => g.status === "In Progress").length;
-  const pending = grievances.filter(g => g.status === "Pending").length;
+  const total = state.grievances.length;
+  const resolved = state.grievances.filter(g => g.status === "Resolved").length;
+  const inProgress = state.grievances.filter(g => g.status === "In Progress" || g.status === "Pending").length;
+  const deptsCount = state.departments.length;
 
   const totalEl = document.getElementById("home-total-count");
   const resolvedEl = document.getElementById("home-resolved-count");
-  const inProgressEl = document.getElementById("home-inprogress-count");
-  const rateEl = document.getElementById("home-rate-count");
+  const inprogEl = document.getElementById("home-inprogress-count");
+  const deptsEl = document.getElementById("home-departments-count");
 
   if (totalEl) totalEl.textContent = total;
   if (resolvedEl) resolvedEl.textContent = resolved;
-  if (inProgressEl) inProgressEl.textContent = inProgress;
-  if (rateEl) rateEl.textContent = `${total > 0 ? Math.round((resolved / total) * 100) : 0}%`;
-}
+  if (inprogEl) inprogEl.textContent = inProgress;
+  if (deptsEl) deptsEl.textContent = deptsCount;
 
-function renderPublicAnalytics() {
-  const grievances = state.allGrievances;
-  const total = grievances.length;
-  const resolved = grievances.filter(g => g.status === "Resolved").length;
-  const inProgress = grievances.filter(g => g.status === "In Progress").length;
-  const pending = grievances.filter(g => g.status === "Pending").length;
-  const rejected = grievances.filter(g => g.status === "Rejected").length;
-
-  document.getElementById("analytics-total").textContent = total;
-  document.getElementById("analytics-resolved").textContent = resolved;
-  document.getElementById("analytics-inprogress").textContent = inProgress;
-  document.getElementById("analytics-pending").textContent = pending;
-
-  // Department Breakdown Bars
-  const deptContainer = document.getElementById("analytics-department-breakdown");
-  if (deptContainer) {
-    let html = `<div class="space-y-4">`;
-    state.departments.forEach(dept => {
-      const deptGrievances = grievances.filter(g => g.department_id === dept.id);
-      const deptTotal = deptGrievances.length;
-      const deptResolved = deptGrievances.filter(g => g.status === "Resolved").length;
-      const pct = deptTotal > 0 ? Math.round((deptResolved / deptTotal) * 100) : 0;
-
-      html += `
-        <div>
-          <div class="flex justify-between items-center text-xs font-semibold mb-1">
-            <span class="text-slate-800">${dept.name}</span>
-            <span class="text-slate-500">${deptResolved} / ${deptTotal} Resolved (${pct}%)</span>
-          </div>
-          <div class="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
-            <div class="bg-gradient-to-r from-amber-500 to-emerald-600 h-2.5 rounded-full transition-all duration-500" style="width: ${pct}%"></div>
-          </div>
-        </div>
-      `;
-    });
-    html += `</div>`;
-    deptContainer.innerHTML = html;
-  }
-
-  // Priority Breakdown Bars
-  const priorityContainer = document.getElementById("analytics-priority-breakdown");
-  if (priorityContainer) {
-    const priorities = ["Urgent", "High", "Medium", "Low"];
-    const colors = {
-      Urgent: "bg-rose-500",
-      High: "bg-orange-500",
-      Medium: "bg-amber-400",
-      Low: "bg-slate-400"
-    };
-
-    let pHtml = `<div class="space-y-4">`;
-    priorities.forEach(p => {
-      const count = grievances.filter(g => g.priority === p).length;
-      const pct = total > 0 ? Math.round((count / total) * 100) : 0;
-
-      pHtml += `
-        <div>
-          <div class="flex justify-between items-center text-xs font-semibold mb-1">
-            <span class="text-slate-800">${p} Priority</span>
-            <span class="text-slate-500">${count} (${pct}%)</span>
-          </div>
-          <div class="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
-            <div class="${colors[p]} h-2.5 rounded-full" style="width: ${pct}%"></div>
-          </div>
-        </div>
-      `;
-    });
-    pHtml += `</div>`;
-    priorityContainer.innerHTML = pHtml;
-  }
-
-  // Recent Redressals Ticker / Feed
-  const recentFeed = document.getElementById("analytics-recent-feed");
-  if (recentFeed) {
-    const recentResolved = grievances
-      .filter(g => g.status === "Resolved")
-      .slice(0, 5);
-
-    if (recentResolved.length === 0) {
-      recentFeed.innerHTML = `<div class="text-xs text-slate-400 p-4">No recent resolutions.</div>`;
-    } else {
-      let fHtml = `<div class="space-y-3">`;
-      recentResolved.forEach(g => {
-        fHtml += `
-          <div class="bg-emerald-50 border border-emerald-200 rounded-lg p-3 flex items-start gap-3">
-            <div class="w-6 h-6 rounded-full bg-emerald-600 text-white flex items-center justify-center flex-shrink-0 text-xs font-bold mt-0.5">
-              ✓
+  // Render department directory cards on landing page
+  const deptGrid = document.getElementById("home-department-grid");
+  if (deptGrid && state.departments.length > 0) {
+    deptGrid.innerHTML = state.departments
+      .map(d => {
+        return `
+        <div class="bg-white p-5 rounded-2xl border-2 border-slate-200 hover:border-amber-500 transition shadow-sm space-y-3">
+          <div class="flex items-center justify-between">
+            <div class="w-10 h-10 rounded-xl bg-amber-50 text-amber-700 font-bold flex items-center justify-center border border-amber-200">
+              🏛️
             </div>
-            <div class="flex-1">
-              <div class="text-xs font-bold text-slate-900">${g.title}</div>
-              <div class="text-[11px] text-slate-600 mt-0.5">${g.department_name} • Resolved on ${formatDate(g.resolved_at || g.updated_at)}</div>
-              <div class="text-[11px] text-emerald-800 font-medium mt-1">Resolution: "${g.resolution_notes || "Completed successfully"}"</div>
+            <span class="text-[11px] font-mono font-extrabold text-amber-800 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+              SLA: ${d.sla_hours}h
+            </span>
+          </div>
+          <div>
+            <h4 class="text-sm font-black text-slate-900 font-emblem">${d.name}</h4>
+            <p class="text-xs text-slate-500 mt-1 leading-relaxed">${d.description}</p>
+          </div>
+          <div class="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">
+            <span>Head: <strong class="text-slate-700">${d.head_official}</strong></span>
+            <button onclick="handleLodgeGrievanceClick()" class="text-amber-600 font-bold hover:underline">
+              File &rarr;
+            </button>
+          </div>
+        </div>
+      `;
+      })
+      .join("");
+  }
+
+  // Render Resolved Feed Preview on Landing Page
+  const feedPreview = document.getElementById("home-resolved-feed-preview");
+  if (feedPreview) {
+    const resolvedCases = state.grievances.filter(g => g.status === "Resolved").slice(0, 3);
+    if (resolvedCases.length === 0) {
+      feedPreview.innerHTML = `<div class="col-span-full text-center text-xs text-slate-400 py-6">No resolved cases archived yet.</div>`;
+    } else {
+      feedPreview.innerHTML = resolvedCases
+        .map(g => {
+          const photo = g.image_url || g.attachment_url;
+          return `
+          <div class="bg-white rounded-2xl border-2 border-slate-200 p-5 shadow-sm hover:shadow-md transition space-y-3 text-xs flex flex-col justify-between">
+            <div class="space-y-2">
+              <div class="flex justify-between items-center">
+                <span class="font-mono font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 text-[10px]">
+                  ${g.tracking_id}
+                </span>
+                <span class="text-[10px] text-slate-400">${formatDate(g.resolved_at || g.created_at)}</span>
+              </div>
+              <h4 class="font-black text-slate-900 font-emblem line-clamp-1">${g.title}</h4>
+              <p class="text-[11px] text-slate-500 line-clamp-2">${g.description}</p>
+              ${
+                photo
+                  ? `<div class="h-28 rounded-lg overflow-hidden border border-slate-200 cursor-pointer" onclick="zoomImage('${photo}')">
+                      <img src="${photo}" alt="Evidence" class="w-full h-full object-cover hover:scale-105 transition duration-300" />
+                    </div>`
+                  : ""
+              }
+              ${
+                g.resolution_notes
+                  ? `<div class="bg-emerald-50 border border-emerald-200 p-2.5 rounded-lg text-[11px] text-slate-800">
+                      <strong class="text-emerald-900 text-[10px] uppercase block">Action Taken:</strong>
+                      <span class="italic line-clamp-2">${g.resolution_notes}</span>
+                    </div>`
+                  : ""
+              }
+            </div>
+            <div class="pt-2 border-t border-slate-100 flex justify-between items-center text-[10px] text-slate-500">
+              <span>Department: <strong class="text-slate-700">${g.department_name}</strong></span>
+              <button onclick="handlePublicSearch('${g.tracking_id}')" class="text-amber-700 font-bold hover:underline">
+                Audit Trail &rarr;
+              </button>
             </div>
           </div>
         `;
-      });
-      fHtml += `</div>`;
-      recentFeed.innerHTML = fHtml;
+        })
+        .join("");
     }
   }
 }
 
 // ==============================================================================
-// 15. CSV EXPORT UTILITY
+// 18. CSV AUDIT EXPORT (Officials / Admins)
 // ==============================================================================
 function exportGrievancesToCSV() {
-  const grievances = state.allGrievances;
-  if (!grievances || grievances.length === 0) {
-    showToast("No data to export", "info");
+  if (!state.grievances || state.grievances.length === 0) {
+    showToast("No grievance records available to export.", "error");
     return;
   }
 
   const headers = [
     "Tracking ID",
-    "Title",
+    "Lodged Date",
     "Citizen Name",
     "Citizen Email",
     "Citizen Phone",
+    "Subject",
     "Department",
     "Priority",
-    "Location",
-    "District",
     "Status",
+    "District",
+    "Location",
     "Assigned Official",
     "Resolution Notes",
-    "Created Date"
+    "Resolved Date"
   ];
 
-  const rows = grievances.map(g => [
-    `"${g.tracking_id}"`,
-    `"${(g.title || "").replace(/"/g, '""')}"`,
+  const rows = state.grievances.map(g => [
+    `"${g.tracking_id || ""}"`,
+    `"${g.created_at || ""}"`,
     `"${(g.citizen_name || "").replace(/"/g, '""')}"`,
     `"${g.citizen_email || ""}"`,
     `"${g.citizen_phone || ""}"`,
+    `"${(g.title || "").replace(/"/g, '""')}"`,
     `"${(g.department_name || "").replace(/"/g, '""')}"`,
-    `"${g.priority}"`,
-    `"${(g.location || "").replace(/"/g, '""')}"`,
+    `"${g.priority || ""}"`,
+    `"${g.status || ""}"`,
     `"${(g.district || "").replace(/"/g, '""')}"`,
-    `"${g.status}"`,
-    `"${(g.assigned_official_name || "Unassigned").replace(/"/g, '""')}"`,
+    `"${(g.location || "").replace(/"/g, '""')}"`,
+    `"${(g.assigned_official_name || "").replace(/"/g, '""')}"`,
     `"${(g.resolution_notes || "").replace(/"/g, '""')}"`,
-    `"${formatDate(g.created_at)}"`
+    `"${g.resolved_at || ""}"`
   ]);
 
-  const csvContent = [headers.join(","), ...rows.map(r => r.join(","))].join("\n");
-  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
+  const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
+  const encodedUri = encodeURI(csvContent);
   const link = document.createElement("a");
-  link.setAttribute("href", url);
-  link.setAttribute("download", `PGRRS_Grievances_Report_${new Date().toISOString().slice(0, 10)}.csv`);
+  link.setAttribute("href", encodedUri);
+  link.setAttribute("download", `PGRRS_Government_Grievance_Report_${new Date().toISOString().split("T")[0]}.csv`);
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
-  showToast("Grievance report exported successfully!", "success");
+
+  showToast("Government audit CSV report exported successfully.", "success");
 }
 
 // ==============================================================================
-// 16. SQL SETUP MODAL & SUPABASE HEALTH
+// 19. PHOTO ZOOM LIGHTBOX
+// ==============================================================================
+function zoomImage(src) {
+  const modal = document.getElementById("image-zoom-modal");
+  const img = document.getElementById("zoom-modal-img");
+  if (!modal || !img || !src) return;
+  img.src = src;
+  modal.classList.remove("hidden");
+}
+
+function closeImageZoom() {
+  const modal = document.getElementById("image-zoom-modal");
+  if (modal) modal.classList.add("hidden");
+}
+
+// ==============================================================================
+// 20. SUPABASE SQL SCHEMA MODAL
 // ==============================================================================
 function openSqlModal() {
   const modal = document.getElementById("sql-setup-modal");
-  if (modal) modal.classList.remove("hidden");
+  if (!modal) return;
+  modal.classList.remove("hidden");
+
+  // Fetch or populate schema code
+  const codeEl = document.getElementById("sql-code-snippet");
+  if (codeEl && (!codeEl.textContent || codeEl.textContent.length < 20)) {
+    codeEl.textContent = `-- SUPABASE POSTGRESQL & STORAGE ARCHITECTURE
+-- Run in your Supabase SQL Editor: https://supabase.com/dashboard/project/kihkzjzgpuenbetlrsxp/sql
+
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+DROP TABLE IF EXISTS grievance_logs CASCADE;
+DROP TABLE IF EXISTS grievances CASCADE;
+DROP TABLE IF EXISTS profiles CASCADE;
+DROP TABLE IF EXISTS departments CASCADE;
+
+CREATE TABLE departments (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    code TEXT NOT NULL UNIQUE,
+    description TEXT,
+    head_official TEXT,
+    icon TEXT,
+    sla_hours INTEGER DEFAULT 48,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE profiles (
+    id TEXT PRIMARY KEY,
+    email TEXT UNIQUE NOT NULL,
+    password TEXT NOT NULL,
+    full_name TEXT NOT NULL,
+    phone TEXT,
+    role TEXT NOT NULL CHECK (role IN ('citizen', 'official', 'admin')),
+    department_id TEXT REFERENCES departments(id) ON DELETE SET NULL,
+    official_designation TEXT,
+    district TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE grievances (
+    id TEXT PRIMARY KEY,
+    tracking_id TEXT UNIQUE NOT NULL,
+    citizen_id TEXT REFERENCES profiles(id) ON DELETE SET NULL,
+    citizen_name TEXT NOT NULL,
+    citizen_email TEXT NOT NULL,
+    citizen_phone TEXT,
+    title TEXT NOT NULL,
+    department_id TEXT REFERENCES departments(id) ON DELETE RESTRICT,
+    department_name TEXT NOT NULL,
+    priority TEXT NOT NULL CHECK (priority IN ('Low', 'Medium', 'High', 'Urgent')),
+    location TEXT NOT NULL,
+    district TEXT NOT NULL,
+    description TEXT NOT NULL,
+    image_url TEXT,
+    attachment_url TEXT,
+    status TEXT NOT NULL DEFAULT 'Pending' CHECK (status IN ('Pending', 'In Progress', 'Resolved', 'Rejected')),
+    assigned_official_id TEXT REFERENCES profiles(id) ON DELETE SET NULL,
+    assigned_official_name TEXT,
+    resolution_notes TEXT,
+    resolved_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE grievance_logs (
+    id TEXT PRIMARY KEY,
+    grievance_id TEXT REFERENCES grievances(id) ON DELETE CASCADE,
+    tracking_id TEXT NOT NULL,
+    action TEXT NOT NULL,
+    previous_status TEXT,
+    new_status TEXT,
+    performed_by_name TEXT NOT NULL,
+    performed_by_role TEXT NOT NULL,
+    remarks TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE departments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE grievances ENABLE ROW LEVEL SECURITY;
+ALTER TABLE grievance_logs ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Allow public all on departments" ON departments FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow public all on profiles" ON profiles FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow public all on grievances" ON grievances FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow public all on grievance_logs" ON grievance_logs FOR ALL USING (true) WITH CHECK (true);
+
+-- STORAGE BUCKET CREATION FOR GRIEVANCE IMAGES
+INSERT INTO storage.buckets (id, name, public) 
+VALUES ('images', 'images', true) 
+ON CONFLICT (id) DO NOTHING;
+
+CREATE POLICY "Allow public uploads to images" 
+ON storage.objects FOR INSERT 
+WITH CHECK (bucket_id = 'images');
+
+CREATE POLICY "Allow public select from images" 
+ON storage.objects FOR SELECT 
+USING (bucket_id = 'images');`;
+  }
 }
 
 function closeSqlModal() {
@@ -1947,147 +2488,48 @@ function closeSqlModal() {
 
 async function retrySupabaseConnection() {
   const btn = document.getElementById("retry-supabase-btn");
-  if (btn) btn.innerHTML = `Testing Connection...`;
-
-  isSupabaseOnline = await db.testSupabase();
-  updateSupabaseStatusBadge(isSupabaseOnline);
-
-  if (isSupabaseOnline) {
-    showToast("Connected to live Supabase database!", "success");
-    await refreshData();
-    closeSqlModal();
-    navigate(state.activeView);
-  } else {
-    showToast("Supabase responded, but tables are pending. Run the SQL script in Supabase SQL Editor.", "info");
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = "Checking Connection...";
   }
 
-  if (btn) btn.innerHTML = `Check Connection Again`;
+  const online = await db.testSupabase();
+  updateSupabaseStatusBadge(online);
+
+  if (online) {
+    showToast("Successfully connected to live Supabase PostgreSQL & Storage!", "success");
+    await refreshData();
+  } else {
+    showToast("Supabase did not respond yet. Please execute schema.sql in Supabase SQL editor.", "error");
+  }
+
+  if (btn) {
+    btn.disabled = false;
+    btn.textContent = "Check Connection Again";
+  }
 }
 
 function copySqlToClipboard() {
   const codeEl = document.getElementById("sql-code-snippet");
   if (!codeEl) return;
-  navigator.clipboard.writeText(codeEl.innerText).then(() => {
-    showToast("SQL Schema script copied to clipboard!", "success");
-  });
+  navigator.clipboard.writeText(codeEl.textContent).then(
+    () => showToast("SQL setup script copied to clipboard!", "success"),
+    () => showToast("Could not copy script automatically. Please select text.", "error")
+  );
 }
 
 // ==============================================================================
-// 17. EVENT LISTENERS SETUP
+// 21. EVENT LISTENERS SETUP
 // ==============================================================================
 function setupEventListeners() {
-  // Navigation Links
-  document.querySelectorAll("[data-nav-target]").forEach(btn => {
-    btn.addEventListener("click", e => {
+  // Navigation Links Click
+  document.querySelectorAll("[data-nav-target]").forEach(link => {
+    link.addEventListener("click", (e) => {
       e.preventDefault();
-      const target = btn.getAttribute("data-nav-target");
+      const target = link.getAttribute("data-nav-target");
       navigate(target);
     });
   });
-
-  // Hero Search
-  const heroSearchBtn = document.getElementById("hero-track-btn");
-  const heroSearchInput = document.getElementById("hero-tracking-input");
-  if (heroSearchBtn && heroSearchInput) {
-    heroSearchBtn.addEventListener("click", () => {
-      handlePublicSearch(heroSearchInput.value);
-    });
-    heroSearchInput.addEventListener("keypress", e => {
-      if (e.key === "Enter") handlePublicSearch(heroSearchInput.value);
-    });
-  }
-
-  // Public Search View Search
-  const publicSearchBtn = document.getElementById("public-track-btn");
-  const publicSearchInput = document.getElementById("public-tracking-input");
-  if (publicSearchBtn && publicSearchInput) {
-    publicSearchBtn.addEventListener("click", () => {
-      handlePublicSearch(publicSearchInput.value);
-    });
-    publicSearchInput.addEventListener("keypress", e => {
-      if (e.key === "Enter") handlePublicSearch(publicSearchInput.value);
-    });
-  }
-
-  // Sign In Form
-  const signinForm = document.getElementById("auth-signin-form");
-  if (signinForm) {
-    signinForm.addEventListener("submit", e => {
-      e.preventDefault();
-      const email = document.getElementById("signin-email").value;
-      const pass = document.getElementById("signin-password").value;
-      handleSignIn(email, pass);
-    });
-  }
-
-  // Sign Up Form
-  const signupForm = document.getElementById("auth-signup-form");
-  if (signupForm) {
-    signupForm.addEventListener("submit", e => {
-      e.preventDefault();
-      const role = document.getElementById("signup-role").value;
-      const dept = document.getElementById("signup-department").value;
-
-      if (role !== "citizen" && !dept) {
-        showToast("Please choose a department for official / admin roles", "error");
-        return;
-      }
-
-      handleSignUp({
-        full_name: document.getElementById("signup-name").value,
-        email: document.getElementById("signup-email").value,
-        phone: document.getElementById("signup-phone").value,
-        password: document.getElementById("signup-password").value,
-        role: role,
-        department_id: dept,
-        district: document.getElementById("signup-district").value
-      });
-    });
-
-    // Show/hide department selector on role switch in signup
-    const roleSelect = document.getElementById("signup-role");
-    const deptWrapper = document.getElementById("signup-dept-wrapper");
-    if (roleSelect && deptWrapper) {
-      roleSelect.addEventListener("change", () => {
-        if (roleSelect.value === "citizen") {
-          deptWrapper.classList.add("hidden");
-        } else {
-          deptWrapper.classList.remove("hidden");
-        }
-      });
-    }
-  }
-
-  // Citizen Submit Grievance Form
-  const grievanceForm = document.getElementById("form-file-grievance");
-  if (grievanceForm) {
-    grievanceForm.addEventListener("submit", handleGrievanceSubmit);
-  }
-
-  // Dashboard Filters
-  const filterDept = document.getElementById("filter-department");
-  const filterStatus = document.getElementById("filter-status");
-  const filterPriority = document.getElementById("filter-priority");
-  const filterSearch = document.getElementById("filter-search");
-
-  const applyFilters = () => {
-    state.currentFilter.department = filterDept ? filterDept.value : "all";
-    state.currentFilter.status = filterStatus ? filterStatus.value : "all";
-    state.currentFilter.priority = filterPriority ? filterPriority.value : "all";
-    state.currentFilter.search = filterSearch ? filterSearch.value.trim() : "";
-    renderAdminDashboard();
-  };
-
-  if (filterDept) filterDept.addEventListener("change", applyFilters);
-  if (filterStatus) filterStatus.addEventListener("change", applyFilters);
-  if (filterPriority) filterPriority.addEventListener("change", applyFilters);
-  if (filterSearch) filterSearch.addEventListener("input", applyFilters);
-
-  // Save Grievance Update
-  const saveUpdateBtn = document.getElementById("btn-save-grievance-update");
-  if (saveUpdateBtn) {
-    saveUpdateBtn.addEventListener("click", handleSaveGrievanceUpdate);
-  }
 
   // Mobile Menu Toggle
   const mobileToggle = document.getElementById("mobile-menu-toggle");
@@ -2097,7 +2539,124 @@ function setupEventListeners() {
       mobileMenu.classList.toggle("hidden");
     });
   }
+
+  // Hero Search Box
+  const heroBtn = document.getElementById("hero-track-btn");
+  const heroInput = document.getElementById("hero-tracking-input");
+  if (heroBtn && heroInput) {
+    heroBtn.addEventListener("click", () => {
+      const val = heroInput.value.trim();
+      if (val) {
+        navigate("public-track");
+        const pubInput = document.getElementById("public-tracking-input");
+        if (pubInput) pubInput.value = val;
+        handlePublicSearch(val);
+      }
+    });
+    heroInput.addEventListener("keypress", (e) => {
+      if (e.key === "Enter") {
+        heroBtn.click();
+      }
+    });
+  }
+
+  // Public Tracking Page Search Box
+  const pubBtn = document.getElementById("public-track-btn");
+  const pubInput = document.getElementById("public-tracking-input");
+  if (pubBtn && pubInput) {
+    pubBtn.addEventListener("click", () => {
+      handlePublicSearch(pubInput.value);
+    });
+    pubInput.addEventListener("keypress", (e) => {
+      if (e.key === "Enter") {
+        pubBtn.click();
+      }
+    });
+  }
+
+  // Grievance Filing Form
+  const grievanceForm = document.getElementById("form-file-grievance");
+  if (grievanceForm) {
+    grievanceForm.addEventListener("submit", handleGrievanceSubmit);
+  }
+
+  // Auth Forms
+  const signinForm = document.getElementById("auth-signin-form");
+  if (signinForm) {
+    signinForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const email = document.getElementById("signin-email").value;
+      const pass = document.getElementById("signin-password").value;
+      handleSignIn(email, pass);
+    });
+  }
+
+  const signupForm = document.getElementById("auth-signup-form");
+  if (signupForm) {
+    signupForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const full_name = document.getElementById("signup-name").value;
+      const email = document.getElementById("signup-email").value;
+      const phone = document.getElementById("signup-phone").value;
+      const district = document.getElementById("signup-district").value;
+      const role = document.getElementById("signup-role").value;
+      const department_id = document.getElementById("signup-department").value;
+      const official_designation = document.getElementById("signup-designation") ? document.getElementById("signup-designation").value : null;
+      const password = document.getElementById("signup-password").value;
+      const confirmPassword = document.getElementById("signup-confirm-password").value;
+
+      handleSignUp({
+        full_name,
+        email,
+        phone,
+        district,
+        role,
+        department_id,
+        official_designation,
+        password,
+        confirmPassword
+      });
+    });
+  }
+
+  // Role toggle in sign-up form
+  const roleSelect = document.getElementById("signup-role");
+  const deptWrapper = document.getElementById("signup-dept-wrapper");
+  if (roleSelect && deptWrapper) {
+    roleSelect.addEventListener("change", (e) => {
+      if (e.target.value === "official") {
+        deptWrapper.classList.remove("hidden");
+      } else {
+        deptWrapper.classList.add("hidden");
+      }
+    });
+  }
+
+  // Admin Dashboard Filters
+  const filterDept = document.getElementById("filter-department");
+  const filterStatus = document.getElementById("filter-status");
+  const filterPriority = document.getElementById("filter-priority");
+  const filterSearch = document.getElementById("filter-search");
+
+  [filterDept, filterStatus, filterPriority].forEach(el => {
+    if (el) el.addEventListener("change", renderAdminDashboard);
+  });
+  if (filterSearch) {
+    filterSearch.addEventListener("input", renderAdminDashboard);
+  }
+
+  // Save Grievance Update Button
+  const saveUpdateBtn = document.getElementById("btn-save-grievance-update");
+  if (saveUpdateBtn) {
+    saveUpdateBtn.addEventListener("click", handleSaveGrievanceUpdate);
+  }
+
+  // Archive Feed Filters
+  const archiveDept = document.getElementById("archive-dept-filter");
+  const archiveSearch = document.getElementById("archive-search-input");
+  if (archiveDept) archiveDept.addEventListener("change", renderArchiveFeed);
+  if (archiveSearch) archiveSearch.addEventListener("input", renderArchiveFeed);
 }
 
-// Global bootstrap on DOM ready
+// Start application when DOM is ready
 document.addEventListener("DOMContentLoaded", initApp);
